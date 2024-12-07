@@ -1,6 +1,33 @@
-from sqlalchemy import Column, Integer, String, Float, ARRAY, Text
+from sqlalchemy import Column, Integer, String, Float, ARRAY, Text, DateTime, Boolean, ForeignKey
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
+from sqlalchemy.sql import func
 from database import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True)
+    name = Column(String, nullable=True)
+    subscription_tier = Column(String, default="free")  # free, basic, professional
+    subscription_status = Column(String, default="active")
+    subscription_start = Column(DateTime(timezone=True), server_default=func.now())
+    subscription_end = Column(DateTime(timezone=True), nullable=True)
+
+    # Usage tracking
+    monthly_searches = Column(Integer, default=0)
+    last_search = Column(DateTime(timezone=True), nullable=True)
+    total_searches = Column(Integer, default=0)
+
+    # Feature access flags
+    can_export = Column(Boolean, default=False)
+    can_see_full_profiles = Column(Boolean, default=False)
+    can_see_contact_info = Column(Boolean, default=False)
+    monthly_search_limit = Column(Integer, default=10)  # -1 for unlimited
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
 class Investor(Base):
