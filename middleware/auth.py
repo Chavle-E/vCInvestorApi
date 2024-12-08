@@ -1,5 +1,6 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, UTC
 from fastapi import Request, HTTPException, Depends
+from fastapi.security import OAuth2PasswordBearer
 import jwt
 from sqlalchemy.orm import Session
 from database import get_db
@@ -124,3 +125,25 @@ class RateLimitMiddleware:
         except Exception as e:
             logger.error(f"Rate limit error: {str(e)}")
             raise HTTPException(status_code=429, detail="Rate limit error")
+
+
+class AuthHandler:
+    def __init__(self):
+        self.secret = os.getenv('JWT_SECRET')
+        self.algorithm = 'HS256'
+        self.access_token_expire = 24  # hours
+        self.refresh_token_expire = 7  # days
+
+    def create_access_token(self, user_id: int):
+        expires = datetime.now(UTC) + timedelta(hours=self.access_token_expire)
+        return self._create_token(
+            data={"user_id": user_id, "type": "access"},
+            expires=expires
+        )
+
+    def create_refresh_token(self, user_id: int):
+        expires = datetime.now(UTC) + timedelta(days=self.refresh_token_expire)
+        return self._create_token(
+            data={"user_id": user_id, "type": "refresh"},
+            expires=expires
+        )
