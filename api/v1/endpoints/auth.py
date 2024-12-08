@@ -10,13 +10,12 @@ import traceback
 
 logger = logging.getLogger(__name__)
 
+router = APIRouter()
+
 
 class UserCreate(BaseModel):
     email: EmailStr
     name: Optional[str] = None
-
-
-router = APIRouter()
 
 
 @router.post("/login")
@@ -43,9 +42,20 @@ async def login(email: str, db: Session = Depends(get_db)):
         return {
             "access_token": token,
             "token_type": "bearer",
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "subscription_tier": user.subscription_tier,
+                "subscription_status": user.subscription_status,
+                "monthly_searches_remaining": (
+                    None if user.monthly_search_limit == -1
+                    else max(0, user.monthly_search_limit - user.monthly_searches)
+                )
+            }
         }
     except Exception as e:
         logger.error(f"Login error: {str(e)}")
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

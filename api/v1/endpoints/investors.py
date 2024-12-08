@@ -1,8 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_, and_, cast, ARRAY, String, func, text
-from sqlalchemy.sql import expression
+from sqlalchemy import or_, cast, ARRAY, String
 from sqlalchemy.orm import Session
-from typing import List, Dict
 import models
 import schemas
 from database import get_db

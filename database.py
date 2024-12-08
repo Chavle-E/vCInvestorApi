@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker
 import os
 from dotenv import load_dotenv
 import logging
+import traceback
 
 # Load environment variables
 load_dotenv()

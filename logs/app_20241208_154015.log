@@ -1,0 +1,29 @@
+2024-12-08 15:40:15,332 - root - INFO - Starting up...
+2024-12-08 15:40:15,332 - database - INFO - Testing database connection...
+2024-12-08 15:40:15,354 - database - INFO - Database connection successful!
+2024-12-08 15:40:17,513 - api.v1.endpoints.auth - INFO - Registration attempt for email: chavleshviliguka@gmail.com
+2024-12-08 15:40:17,603 - api.v1.endpoints.auth - WARNING - Registration failed: Email already exists - chavleshviliguka@gmail.com
+2024-12-08 15:40:17,604 - database - ERROR - Database session error: 
+2024-12-08 15:40:17,605 - database - ERROR - Traceback (most recent call last):
+  File "/home/guga-chavle/PycharmProjects/app/database.py", line 48, in get_db
+    yield db
+fastapi.exceptions.HTTPException
+
+2024-12-08 15:40:31,477 - api.v1.endpoints.auth - ERROR - Login error: module 'jwt' has no attribute 'encode'
+2024-12-08 15:40:31,478 - database - ERROR - Database session error: 
+2024-12-08 15:40:31,479 - database - ERROR - Traceback (most recent call last):
+  File "/home/guga-chavle/PycharmProjects/app/api/v1/endpoints/auth.py", line 41, in login
+    token = create_token(user.id, user.email)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/guga-chavle/PycharmProjects/app/middleware/auth.py", line 46, in create_token
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+           ^^^^^^^^^^
+AttributeError: module 'jwt' has no attribute 'encode'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/guga-chavle/PycharmProjects/app/database.py", line 48, in get_db
+    yield db
+fastapi.exceptions.HTTPException
+

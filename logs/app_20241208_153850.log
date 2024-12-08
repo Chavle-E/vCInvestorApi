@@ -1,0 +1,6 @@
+2024-12-08 15:38:50,719 - root - INFO - Starting up...
+2024-12-08 15:38:50,720 - database - INFO - Testing database connection...
+2024-12-08 15:38:50,741 - database - INFO - Database connection successful!
+2024-12-08 15:39:43,202 - api.v1.endpoints.auth - INFO - Registration attempt for email: chavleshviliguka@gmail.com
+2024-12-08 15:39:43,226 - api.v1.endpoints.auth - WARNING - Registration failed: Email already exists - chavleshviliguka@gmail.com
+2024-12-08 15:39:43,227 - database - ERROR - Database session error: 
