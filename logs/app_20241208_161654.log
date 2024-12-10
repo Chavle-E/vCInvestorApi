@@ -1,3 +1,17 @@
 2024-12-08 16:16:54,668 - root - INFO - Starting up...
 2024-12-08 16:16:54,669 - database - INFO - Testing database connection...
 2024-12-08 16:16:54,691 - database - INFO - Database connection successful!
+2024-12-08 17:23:16,628 - middleware.auth - WARNING - No token provided in Authorization header
+2024-12-08 17:23:16,628 - database - ERROR - Database session error: 
+2024-12-08 17:23:16,629 - database - ERROR - Traceback (most recent call last):
+  File "/home/guga-chavle/PycharmProjects/app/database.py", line 48, in get_db
+    yield db
+fastapi.exceptions.HTTPException
+
+2024-12-08 17:23:29,221 - middleware.auth - WARNING - No token provided in Authorization header
+2024-12-08 17:23:29,222 - database - ERROR - Database session error: 
+2024-12-08 17:23:29,222 - database - ERROR - Traceback (most recent call last):
+  File "/home/guga-chavle/PycharmProjects/app/database.py", line 48, in get_db
+    yield db
+fastapi.exceptions.HTTPException
+

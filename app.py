@@ -1,15 +1,13 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from api.v1.endpoints import (
     investors,
     investment_funds,
-    users,
     export,
-    utils,
-    auth
+    utils
 )
 from database import engine, get_db, test_db_connection
-from middleware.auth import AuthMiddleware, RateLimitMiddleware
 import models
 import os
 import logging
@@ -48,24 +46,32 @@ def setup_logging():
 
 logger = setup_logging()
 
+
+# Startup and shutdown events
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # Startup
+    logger.info("Starting application...")
+    if not test_db_connection():
+        logger.error("Database connection failed!")
+        sys.exit(1)
+
+    models.Base.metadata.create_all(bind=engine)
+    logger.info("Database tables verified")
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down application...")
+
+
 # Create FastAPI app
 app = FastAPI(
     title="Investor Database API",
     description="API for managing investors and investment funds database",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
-
-
-# Test database connection on startup
-@app.on_event("startup")
-async def startup_event():
-    """Run startup tasks"""
-    logger.info("Starting up...")
-    if not test_db_connection():
-        logger.error("Database connection failed!")
-        # In production, you might want to exit here
-        # import sys; sys.exit(1)
-
 
 # Configure CORS
 origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
@@ -77,45 +83,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Auth dependencies
-auth_middleware = AuthMiddleware()
-rate_limit_middleware = RateLimitMiddleware()
-
-
-def get_auth_dependencies():
-    """Get all auth dependencies"""
-    return [
-        Depends(get_db),
-        Depends(auth_middleware),
-        Depends(rate_limit_middleware)
-    ]
-
-
-# Public routes - no auth required
-public_routes = [
-    (auth.router, "/api/v1/auth", "auth"),
-    (utils.router, "/api/v1", "utils")
-]
-
-for router, prefix, tag in public_routes:
-    app.include_router(router, prefix=prefix, tags=[tag])
-
-# Protected routes - require auth & respect rate limits
-protected_routes = [
-    (investors.router, "/api/v1/investors", "investors"),
-    (investment_funds.router, "/api/v1/funds", "funds"),
-    (export.router, "/api/v1/export", "export"),
-    (users.router, "/api/v1/users", "users"),
-]
-
-for router, prefix, tag in protected_routes:
-    app.include_router(
-        router,
-        prefix=prefix,
-        tags=[tag],
-        dependencies=get_auth_dependencies()
-    )
-
 
 @app.get("/health")
 async def health_check():
@@ -126,3 +93,37 @@ async def health_check():
         "environment": os.getenv("ENVIRONMENT", "development"),
         "database": "connected" if test_db_connection() else "error"
     }
+
+
+# Public routes - no auth required
+public_routes = [
+    (utils.router, "/api/v1", "utils")
+]
+
+for router, prefix, tag in public_routes:
+    app.include_router(router, prefix=prefix, tags=[tag])
+
+protected_routes = [
+    (investors.router, "/api/v1/investors", "investors", "basic"),
+    (investment_funds.router, "/api/v1/funds", "funds", "basic"),
+
+    (export.router, "/api/v1/export", "export", "professional"),
+
+]
+
+for router, prefix, tag, _ in protected_routes:
+    app.include_router(
+        router,
+        prefix=prefix,
+        tags=[tag]
+    )
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        "app:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True if os.getenv("ENVIRONMENT") == "development" else False
+    )

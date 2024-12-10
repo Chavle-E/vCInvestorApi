@@ -1,25 +1,25 @@
 # database.py
 from sqlalchemy import create_engine, text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session, declarative_base
 import os
 from dotenv import load_dotenv
 import logging
 import traceback
+from fastapi import HTTPException
 
 # Load environment variables
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logging.basicConfig()
+logger = logging.getLogger("sqlalchemy.engine")
 
 # Get database URL from environment variables with fallback
 SQLALCHEMY_DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql://investor_admin:your_secure_password@localhost/investor_db"
 )
-
+print(SQLALCHEMY_DATABASE_URL)
 # Create engine with proper configuration
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
@@ -40,19 +40,20 @@ SessionLocal = sessionmaker(
 Base = declarative_base()
 
 
-def get_db():
-    """Dependency that provides a database session"""
+async def get_db():
     db = SessionLocal()
     try:
-        logger.debug("Creating new database session")
         yield db
     except Exception as e:
-        logger.error(f"Database session error: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise
+        logger.error(f"Database error: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Database connection error"
+        )
     finally:
-        logger.debug("Closing database session")
         db.close()
+
 
 def test_db_connection():
     """Test database connection"""
