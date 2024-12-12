@@ -13,6 +13,7 @@ import os
 import logging
 import sys
 from datetime import datetime
+from api.v1.endpoints import lists
 
 
 # Configure logging
@@ -106,9 +107,8 @@ for router, prefix, tag in public_routes:
 protected_routes = [
     (investors.router, "/api/v1/investors", "investors", "basic"),
     (investment_funds.router, "/api/v1/funds", "funds", "basic"),
-
     (export.router, "/api/v1/export", "export", "professional"),
-
+    (lists.router, "/api/v1/lists", "lists", "basic"),  # Add this line
 ]
 
 for router, prefix, tag, _ in protected_routes:

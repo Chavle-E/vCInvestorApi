@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 from enum import Enum
@@ -357,3 +358,23 @@ class InvestmentFundFilterParams(BaseModel):
 
     class Config:
         use_enum_values = True
+
+
+# ==================== List Classes ====================
+class SavedListBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    list_type: str
+
+
+class SavedListCreate(SavedListBase):
+    pass
+
+
+class SavedList(SavedListBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

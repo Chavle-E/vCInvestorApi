@@ -1,10 +1,8 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import Column, or_, String, Text
-from sqlalchemy.sql import expression
+from sqlalchemy import or_, String, Text
 import models
 import schemas
-from typing import TypeVar, Generic, List, Any, Dict, Optional, Type, Union
-from sqlalchemy.exc import SQLAlchemyError
+from typing import TypeVar, Generic, List, Any, Dict, Optional, Type
 import logging
 import math
 from decimal import Decimal
@@ -224,6 +222,71 @@ class CRUDInvestmentFund(CRUDBase[models.InvestmentFund, schemas.InvestmentFundC
         ).first()
 
 
+class CRUDSavedList(CRUDBase[models.SavedList, schemas.SavedListCreate]):
+    def add_investor_to_list(self, db: Session, list_id: int, investor_id: int) -> bool:
+        try:
+            saved_list = db.query(models.SavedList).filter(models.SavedList.id == list_id).first()
+            investor = db.query(models.Investor).filter(models.Investor.id == investor_id).first()
+
+            if saved_list and investor:
+                if investor not in saved_list.saved_investors:
+                    saved_list.saved_investors.append(investor)
+                    db.commit()
+                return True
+            return False
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error adding investor to list: {str(e)}")
+            raise
+
+    def add_fund_to_list(self, db: Session, list_id: int, fund_id: int) -> bool:
+        try:
+            saved_list = db.query(models.SavedList).filter(models.SavedList.id == list_id).first()
+            fund = db.query(models.InvestmentFund).filter(models.InvestmentFund.id == fund_id).first()
+
+            if saved_list and fund:
+                if fund not in saved_list.saved_funds:
+                    saved_list.saved_funds.append(fund)
+                    db.commit()
+                return True
+            return False
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error adding fund to list: {str(e)}")
+            raise
+
+    def remove_investor_from_list(self, db: Session, list_id: int, investor_id: int) -> bool:
+        try:
+            saved_list = db.query(models.SavedList).filter(models.SavedList.id == list_id).first()
+            investor = db.query(models.Investor).filter(models.Investor.id == investor_id).first()
+
+            if saved_list and investor and investor in saved_list.saved_investors:
+                saved_list.saved_investors.remove(investor)
+                db.commit()
+                return True
+            return False
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error removing investor from list: {str(e)}")
+            raise
+
+    def remove_fund_from_list(self, db: Session, list_id: int, fund_id: int) -> bool:
+        try:
+            saved_list = db.query(models.SavedList).filter(models.SavedList.id == list_id).first()
+            fund = db.query(models.InvestmentFund).filter(models.InvestmentFund.id == fund_id).first()
+
+            if saved_list and fund and fund in saved_list.saved_funds:
+                saved_list.saved_funds.remove(fund)
+                db.commit()
+                return True
+            return False
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error removing fund from list: {str(e)}")
+            raise
+
+
 # Create instances
+saved_list = CRUDSavedList(models.SavedList)
 investor = CRUDInvestor(models.Investor)
 investment_fund = CRUDInvestmentFund(models.InvestmentFund)
