@@ -13,4 +13,3 @@ alembic
 pytest==7.4.3
 httpx==0.25.1
 pandas~=2.2.3
-PyJWT
