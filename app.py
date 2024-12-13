@@ -5,7 +5,8 @@ from api.v1.endpoints import (
     investors,
     investment_funds,
     export,
-    utils
+    utils,
+    lists
 )
 from database import engine, get_db, test_db_connection
 import models
@@ -13,24 +14,18 @@ import os
 import logging
 import sys
 from datetime import datetime
-from api.v1.endpoints import lists
+from middleware.rate_limit import RateLimitMiddleware
 
 
 # Configure logging
 def setup_logging():
-    # Create logs directory if it doesn't exist
-    from pathlib import Path
-    Path("logs").mkdir(exist_ok=True)
+    """Configure logging to output to console only"""
+    import logging
+    import sys
 
     # Configure logging format
     log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     formatter = logging.Formatter(log_format)
-
-    # Set up file handler
-    file_handler = logging.FileHandler(
-        f'logs/app_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
-    )
-    file_handler.setFormatter(formatter)
 
     # Set up console handler
     console_handler = logging.StreamHandler(sys.stdout)
@@ -39,7 +34,9 @@ def setup_logging():
     # Configure root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
-    root_logger.addHandler(file_handler)
+
+    # Remove any existing handlers
+    root_logger.handlers = []
     root_logger.addHandler(console_handler)
 
     return root_logger
@@ -72,6 +69,12 @@ app = FastAPI(
     description="API for managing investors and investment funds database",
     version="1.0.0",
     lifespan=lifespan
+)
+
+app.add_middleware(
+    RateLimitMiddleware,
+    rate_limit_duration=24 * 60 * 60,  # 24 hours in seconds
+    default_limit=1000  # Default requests per day
 )
 
 # Configure CORS
