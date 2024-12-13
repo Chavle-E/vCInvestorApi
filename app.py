@@ -6,7 +6,8 @@ from api.v1.endpoints import (
     investment_funds,
     export,
     utils,
-    lists
+    lists,
+    counts
 )
 from database import engine, get_db, test_db_connection
 import models
@@ -20,8 +21,6 @@ from middleware.rate_limit import RateLimitMiddleware
 # Configure logging
 def setup_logging():
     """Configure logging to output to console only"""
-    import logging
-    import sys
 
     # Configure logging format
     log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -111,7 +110,8 @@ protected_routes = [
     (investors.router, "/api/v1/investors", "investors", "basic"),
     (investment_funds.router, "/api/v1/funds", "funds", "basic"),
     (export.router, "/api/v1/export", "export", "professional"),
-    (lists.router, "/api/v1/lists", "lists", "basic"),  # Add this line
+    (lists.router, "/api/v1/lists", "lists", "basic"),
+    (counts.router, "/api/v1/counts", "counts", "basic")  # Add this line
 ]
 
 for router, prefix, tag, _ in protected_routes:

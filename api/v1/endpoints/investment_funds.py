@@ -209,3 +209,44 @@ async def search_funds(
     except Exception as e:
         logger.error(f"Error searching investment funds: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def apply_fund_filters(query, filters):
+    """Apply filters to investment fund query"""
+    if not filters:
+        return query
+
+    if filters.searchTerm:
+        search = f"%{filters.searchTerm}%"
+        query = query.filter(models.InvestmentFund.firm_name.ilike(search) |
+                             models.InvestmentFund.full_name.ilike(search) |
+                             models.InvestmentFund.firm_email.ilike(search) |
+                             models.InvestmentFund.contact_email.ilike(search) |
+                             models.InvestmentFund.description.ilike(search))
+
+    if filters.location:
+        if filters.location.city:
+            query = query.filter(models.InvestmentFund.firm_city.in_(filters.location.city))
+        if filters.location.state:
+            query = query.filter(models.InvestmentFund.firm_state.in_(filters.location.state))
+        if filters.location.country:
+            query = query.filter(models.InvestmentFund.firm_country.in_(filters.location.country))
+        if filters.location.location_preferences:
+            query = query.filter(models.InvestmentFund.geographic_preferences.overlap(
+                filters.location.location_preferences
+            ))
+
+    if filters.industry and filters.industry.industries:
+        query = query.filter(models.InvestmentFund.industry_preferences.overlap(
+            filters.industry.industries
+        ))
+
+    if filters.stages and filters.stages.stages:
+        query = query.filter(models.InvestmentFund.stage_preferences.overlap(
+            filters.stages.stages
+        ))
+
+    if filters.fundType and filters.fundType.types:
+        query = query.filter(models.InvestmentFund.firm_type.in_(filters.fundType.types))
+
+    return query

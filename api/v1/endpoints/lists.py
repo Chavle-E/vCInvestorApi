@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, joinedload
-from typing import List, Dict
+from typing import List
 import models
 import schemas
 from database import get_db
@@ -87,68 +87,7 @@ def remove_fund_from_list(
 
 
 @router.get("/{list_id}/items", response_model=None)
-def get_list_items(
-        list_id: int,
-        db: Session = Depends(get_db)
-):
-    """Get all items in a saved list"""
-    try:
-        logger.info(f"Attempting to retrieve items for list {list_id}")
-
-        # Get the list with relationships loaded
-        saved_list = db.query(models.SavedList) \
-            .options(joinedload(models.SavedList.saved_investors)) \
-            .options(joinedload(models.SavedList.saved_funds)) \
-            .filter(models.SavedList.id == list_id) \
-            .first()
-
-        if not saved_list:
-            logger.error(f"List with id {list_id} not found")
-            raise HTTPException(status_code=404, detail="List not found")
-
-        logger.info(f"Found list: {saved_list.name} (type: {saved_list.list_type})")
-        logger.info(f"Number of investors: {len(saved_list.saved_investors)}")
-        logger.info(f"Number of funds: {len(saved_list.saved_funds)}")
-
-        # Convert items to dictionaries based on list type
-        if saved_list.list_type.lower() == 'investor':
-            # Get the actual investor records
-            investor_ids = [inv.id for inv in saved_list.saved_investors]
-            investors = db.query(models.Investor) \
-                .filter(models.Investor.id.in_(investor_ids)) \
-                .all()
-
-            items = [crud.investor.to_dict(inv) for inv in investors]
-            logger.info(f"Retrieved {len(items)} investors")
-        else:
-            # Get the actual fund records
-            fund_ids = [fund.id for fund in saved_list.saved_funds]
-            funds = db.query(models.InvestmentFund) \
-                .filter(models.InvestmentFund.id.in_(fund_ids)) \
-                .all()
-
-            items = [crud.investment_fund.to_dict(fund) for fund in funds]
-            logger.info(f"Retrieved {len(items)} funds")
-
-        # Return formatted response
-        return {
-            "list_id": list_id,
-            "list_name": saved_list.name,
-            "list_type": saved_list.list_type,
-            "total_items": len(items),
-            "items": items
-        }
-
-    except Exception as e:
-        logger.error(f"Error retrieving list items: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Internal server error: {str(e)}"
-        )
-
-
-@router.get("/{list_id}/items", response_model=None)
-def get_list_items(
+async def get_list_items_combined(
         list_id: int,
         db: Session = Depends(get_db)
 ):
@@ -213,6 +152,65 @@ def get_list_items(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/{list_id}/items/by-type", response_model=None)
+async def get_list_items_by_type(
+        list_id: int,
+        db: Session = Depends(get_db)
+):
+    """Get all items in a saved list based on list type"""
+    try:
+        logger.info(f"Attempting to retrieve items for list {list_id}")
+
+        # Get the list with relationships loaded
+        saved_list = db.query(models.SavedList) \
+            .options(joinedload(models.SavedList.saved_investors)) \
+            .options(joinedload(models.SavedList.saved_funds)) \
+            .filter(models.SavedList.id == list_id) \
+            .first()
+
+        if not saved_list:
+            logger.error(f"List with id {list_id} not found")
+            raise HTTPException(status_code=404, detail="List not found")
+
+        logger.info(f"Found list: {saved_list.name} (type: {saved_list.list_type})")
+
+        # Convert items to dictionaries based on list type
+        if saved_list.list_type.lower() == 'investor':
+            # Get the actual investor records
+            investor_ids = [inv.id for inv in saved_list.saved_investors]
+            investors = db.query(models.Investor) \
+                .filter(models.Investor.id.in_(investor_ids)) \
+                .all()
+
+            items = [crud.investor.to_dict(inv) for inv in investors]
+            logger.info(f"Retrieved {len(items)} investors")
+        else:
+            # Get the actual fund records
+            fund_ids = [fund.id for fund in saved_list.saved_funds]
+            funds = db.query(models.InvestmentFund) \
+                .filter(models.InvestmentFund.id.in_(fund_ids)) \
+                .all()
+
+            items = [crud.investment_fund.to_dict(fund) for fund in funds]
+            logger.info(f"Retrieved {len(items)} funds")
+
+        # Return formatted response
+        return {
+            "list_id": list_id,
+            "list_name": saved_list.name,
+            "list_type": saved_list.list_type,
+            "total_items": len(items),
+            "items": items
+        }
+
+    except Exception as e:
+        logger.error(f"Error retrieving list items: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
 @router.put("/{list_id}/type", response_model=None)
 async def update_list_type(
         list_id: int,
@@ -247,7 +245,7 @@ async def export_list(
     """Export all items from a specific list"""
     try:
         # Get the list and its items
-        items_response = get_list_items(list_id, db)
+        items_response = await get_list_items_combined(list_id, db)
 
         # Process investors
         investor_data = items_response["items"]["investors"]["data"]
@@ -295,12 +293,10 @@ async def export_list(
             iter([output.getvalue()]),
             media_type="text/csv",
             headers={
-                "Content-Disposition": f"attachment; filename=list_{list_id}_export.csv"
+                "Content-Disposition": f"attachment; filename=list_{list_id}_export_{datetime.now().strftime('%Y%m%d')}.csv"
             }
         )
 
     except Exception as e:
         logger.error(f"Error exporting list: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-

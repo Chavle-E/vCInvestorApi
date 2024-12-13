@@ -1,29 +1,40 @@
-from datetime import datetime
-from typing import List, Optional
-from pydantic import BaseModel, ConfigDict
 from enum import Enum
+from typing import Optional, List
+from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+from database import Base
+from sqlalchemy import Column, Integer, String, Float, Text
+from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 
 
-# ==================== Enums ====================
+###########################################
+# Investment Fund Filter Enums
+###########################################
 
-class City(str, Enum):
+class InvestmentFundCity(str, Enum):
     NEW_YORK = "New York"
     LONDON = "London"
     SAN_FRANCISCO = "San Francisco"
     CHICAGO = "Chicago"
     BOSTON = "Boston"
     PARIS = "Paris"
-    TORONTO = "Toronto"
     PALO_ALTO = "Palo Alto"
     SHANGHAI = "Shanghai"
+    TORONTO = "Toronto"
+    MENLO_PARK = "Menlo Park"
+    DALLAS = "Dallas"
     TOKYO = "Tokyo"
     BEIJING = "Beijing"
+    LOS_ANGELES = "Los Angeles"
+    HOUSTON = "Houston"
+    MUNICH = "Munich"
+    STOCKHOLM = "Stockholm"
     MUMBAI = "Mumbai"
     CAMBRIDGE = "Cambridge"
     AUSTIN = "Austin"
 
 
-class State(str, Enum):
+class InvestmentFundState(str, Enum):
     CALIFORNIA = "California"
     NEW_YORK = "New York"
     MASSACHUSETTS = "Massachusetts"
@@ -46,7 +57,7 @@ class State(str, Enum):
     NEW_JERSEY = "New Jersey"
 
 
-class Country(str, Enum):
+class InvestmentFundCountry(str, Enum):
     UNITED_STATES = "United States"
     UNITED_KINGDOM = "United Kingdom"
     GERMANY = "Germany"
@@ -69,7 +80,7 @@ class Country(str, Enum):
     KOREA = "Korea"
 
 
-class LocationPreference(str, Enum):
+class InvestmentFundLocationPreference(str, Enum):
     UNITED_STATES = "United States"
     EUROPE = "Europe"
     CANADA = "Canada"
@@ -81,17 +92,18 @@ class LocationPreference(str, Enum):
     FRANCE = "France"
     UNITED_STATES_MID_ATLANTIC = "United States (Mid-Atlantic)"
     UNITED_STATES_MIDWEST = "United States (Midwest)"
-    UNITED_STATES_SOUTHEAST = "United States (Southeast)"
+    ISRAEL = "Israel"
     UNITED_STATES_SOUTHWEST = "United States (Southwest)"
+    UNITED_STATES_SOUTHEAST = "United States (Southeast)"
     UNITED_STATES_NORTHEAST = "United States (Northeast)"
-    NETHERLANDS = "Netherlands"
     SWITZERLAND = "Switzerland"
     SWEDEN = "Sweden"
     INDIA = "India"
+    NETHERLANDS = "Netherlands"
     AUSTRALIA = "Australia"
 
 
-class IndustryPreference(str, Enum):
+class InvestmentFundIndustryPreference(str, Enum):
     IT_SERVICES = "IT Services"
     COMMUNICATIONS_NETWORKING = "Communications & Networking"
     SOFTWARE = "Software"
@@ -101,20 +113,20 @@ class IndustryPreference(str, Enum):
     MEDIA_ENTERTAINMENT = "Media & Entertainment"
     DISTRIBUTION_RETAIL = "Distribution/Retailing"
     FINANCIAL_SERVICES = "Financial Services"
-    NATURAL_RESOURCES = "Natural Resources"
+    ENERGY_NATURAL_RESOURCES = "Energy/Natural Resources"
     DIVERSIFIED = "Diversified"
     INTERNET_TECHNOLOGY = "Internet Technology"
     CHEMICALS_MATERIALS = "Chemicals & Materials"
     MANUFACTURING = "Manufacturing"
     BIOTECHNOLOGY = "Biotechnology"
     ELECTRONICS = "Electronics"
-    MEDICAL_DEVICES = "Medical Devices & Equipment"
-    INDUSTRIAL_PRODUCTS = "Industrial Products & Services"
-    FOOD_SERVICES = "Food Services & Products"
+    MEDICAL_DEVICES_EQUIPMENT = "Medical Devices & Equipment"
+    INDUSTRIAL_PRODUCTS_SERVICES = "Industrial Products & Services"
+    FOOD_SERVICES_PRODUCTS = "Food Services & Products"
     ENVIRONMENT = "Environment"
 
 
-class FundType(str, Enum):
+class InvestmentFundType(str, Enum):
     PRIVATE_EQUITY = "Private Equity Fund"
     VENTURE_CAPITAL = "Venture Capital Fund"
     INVESTMENT_BANK = "Investment Bank"
@@ -123,7 +135,7 @@ class FundType(str, Enum):
     GOVERNMENT = "Government Organization"
 
 
-class StagePreference(str, Enum):
+class InvestmentFundStagePreference(str, Enum):
     EXPANSION = "Expansion"
     MBO_LBO = "MBO/LBO"
     EARLY_STAGE = "Early Stage"
@@ -146,120 +158,363 @@ class StagePreference(str, Enum):
     PRIVATIZATION = "Privatization"
 
 
-class AssetsUnderManagement(str, Enum):
+class InvestmentFundAssetsUnderManagement(str, Enum):
     TIER_1B_PLUS = "$1B+"
-    TIER_100M_500M = "$100M-$500M"
-    TIER_500M_1B = "$500M-$1B"
-    TIER_25M_100M = "$25M-$100M"
-    TIER_0_25M = "$0-$25M"
+    TIER_100M_500M = "$100M - $500M"
+    TIER_500M_1B = "$500M - $1B"
+    TIER_25M_100M = "$25M - $100M"
+    TIER_0_25M = "$0 - $25M"
 
 
-class MinInvestment(str, Enum):
-    TIER_25K_250K = "$25K-$250K"
-    TIER_250K_1M = "$250K-$1M"
-    TIER_1M_5M = "$1M-$5M"
-    TIER_5M_PLUS = "$5M+"
-    TIER_0_25K = "$0-$25K"
+class InvestmentFundMinInvestment(str, Enum):
+    TIER_5M_20M = "$5M - $20M"
+    TIER_1M_5M = "$1M - $5M"
+    TIER_250K_1M = "$250K - $1M"
+    TIER_20M_PLUS = "$20M+"
+    TIER_0_250K = "$0 - $250K"
 
 
-class MaxInvestment(str, Enum):
-    TIER_25M_150M = "$25M-$150M"
-    TIER_10M_25M = "$10M-$25M"
-    TIER_1M_10M = "$1M-$10M"
-    TIER_150M_PLUS = "$150M+"
-    TIER_0_1M = "$0-$1M"
+class InvestmentFundMaxInvestment(str, Enum):
+    TIER_1M_10M = "$1M - $10M"
+    TIER_10M_25M = "$10M - $25M"
+    TIER_25M_100M = "$25M - $100M"
+    TIER_100M_PLUS = "$100M+"
+    TIER_0_1M = "$0 - $1M"
 
 
-class NumberOfInvestors(str, Enum):
-    TIER_1_10 = "1-10"
-    TIER_11_20 = "11-20"
-    TIER_21_30 = "21-30"
-    TIER_31_40 = "31-40"
+class InvestmentFundNumberOfInvestors(str, Enum):
+    TIER_1_10 = "1 - 10"
+    TIER_10_20 = "10 - 20"
+    TIER_20_30 = "20 - 30"
+    TIER_30_40 = "30 - 40"
 
 
-class GenderRatio(str, Enum):
-    NO_FEMALE = "0% Female"
-    FEMALE_25 = "25% Female"
-    FEMALE_33 = "33% Female"
-    FEMALE_50 = "50% Female"
-    FEMALE_67 = "67% Female"
-    FEMALE_75 = "75% Female"
-    FEMALE_100 = "100% Female"
+class InvestmentFundGenderRatio(str, Enum):
+    NO_FEMALE = "0% female"
+    FEMALE_25 = "25% female"
+    FEMALE_20 = "20% female"
+    FEMALE_33 = "33% female"
+    FEMALE_17 = "17% female"
+    FEMALE_13 = "13% female"
+    FEMALE_50 = "50% female"
+    FEMALE_14 = "14% female"
+    FEMALE_11 = "11% female"
+    FEMALE_8 = "8% female"
+    FEMALE_9 = "9% female"
+    FEMALE_10 = "10% female"
+    FEMALE_6 = "6% female"
+    FEMALE_100 = "100% female"
+    FEMALE_40 = "40% female"
+    FEMALE_29 = "29% female"
+    FEMALE_22 = "22% female"
+    FEMALE_7 = "7% female"
+    FEMALE_15 = "15% female"
+    FEMALE_4 = "4% female"
 
 
-# ==================== Filter Models ====================
+###########################################
+
+
+# Investor Filter Enums
+###########################################
+
+class InvestorCity(str, Enum):
+    NEW_YORK = "New York"
+    LONDON = "London"
+    SAN_FRANCISCO = "San Francisco"
+    CHICAGO = "Chicago"
+    BOSTON = "Boston"
+    PARIS = "Paris"
+    TORONTO = "Toronto"
+    PALO_ALTO = "Palo Alto"
+    SHANGHAI = "Shanghai"
+    MENLO_PARK = "Menlo Park"
+    DALLAS = "Dallas"
+    LOS_ANGELES = "Los Angeles"
+    HOUSTON = "Houston"
+    STOCKHOLM = "Stockholm"
+    MUNICH = "Munich"
+    AMSTERDAM = "Amsterdam"
+    BEIJING = "Beijing"
+    GREENWICH = "Greenwich"
+    MUMBAI = "Mumbai"
+    TOKYO = "Tokyo"
+
+
+class InvestorState(str, Enum):
+    CALIFORNIA = "California"
+    NEW_YORK = "New York"
+    MASSACHUSETTS = "Massachusetts"
+    ILLINOIS = "Illinois"
+    TEXAS = "Texas"
+    CONNECTICUT = "Connecticut"
+    ONTARIO = "Ontario"
+    PENNSYLVANIA = "Pennsylvania"
+    FLORIDA = "Florida"
+    NORTH_CAROLINA = "North Carolina"
+    COLORADO = "Colorado"
+    MARYLAND = "Maryland"
+    MICHIGAN = "Michigan"
+    NEW_SOUTH_WALES = "New South Wales"
+    GEORGIA = "Georgia"
+    OHIO = "Ohio"
+    VIRGINIA = "Virginia"
+    MINNESOTA = "Minnesota"
+    DISTRICT_OF_COLUMBIA = "District of Columbia"
+    MISSOURI = "Missouri"
+
+
+class InvestorCountry(str, Enum):
+    UNITED_STATES = "United States"
+    UNITED_KINGDOM = "United Kingdom"
+    FRANCE = "France"
+    GERMANY = "Germany"
+    CANADA = "Canada"
+    CHINA = "China"
+    NETHERLANDS = "Netherlands"
+    INDIA = "India"
+    SWEDEN = "Sweden"
+    ISRAEL = "Israel"
+    SPAIN = "Spain"
+    AUSTRALIA = "Australia"
+    SINGAPORE = "Singapore"
+    BELGIUM = "Belgium"
+    FINLAND = "Finland"
+    JAPAN = "Japan"
+    HONG_KONG = "Hong Kong"
+    ITALY = "Italy"
+    SWITZERLAND = "Switzerland"
+    NORWAY = "Norway"
+
+
+class InvestorLocationPreference(str, Enum):
+    UNITED_STATES = "United States"
+    EUROPE = "Europe"
+    CANADA = "Canada"
+    UNITED_KINGDOM = "United Kingdom"
+    GERMANY = "Germany"
+    CHINA = "China"
+    FRANCE = "France"
+    UNITED_STATES_CALIFORNIA = "United States (California)"
+    ASIA = "Asia"
+    UNITED_STATES_MID_ATLANTIC = "United States (Mid-Atlantic)"
+    UNITED_STATES_MIDWEST = "United States (Midwest)"
+    UNITED_STATES_SOUTHEAST = "United States (Southeast)"
+    ISRAEL = "Israel"
+    SWITZERLAND = "Switzerland"
+    UNITED_STATES_SOUTHWEST = "United States (Southwest)"
+    NETHERLANDS = "Netherlands"
+    SWEDEN = "Sweden"
+    UNITED_STATES_NORTHEAST = "United States (Northeast)"
+    FINLAND = "Finland"
+    AUSTRIA = "Austria"
+
+
+class InvestorIndustryPreference(str, Enum):
+    IT_SERVICES = "IT Services"
+    COMMUNICATIONS_NETWORKING = "Communications & Networking"
+    HEALTHCARE_SERVICES = "Healthcare Services"
+    BUSINESS_PRODUCTS_SERVICES = "Business Products & Services"
+    CONSUMER_PRODUCTS_SERVICES = "Consumer Products & Services"
+    DISTRIBUTION_RETAIL = "Distribution/Retailing"
+    FINANCIAL_SERVICES = "Financial Services"
+    SOFTWARE = "Software"
+    DIVERSIFIED = "Diversified"
+    MEDIA_ENTERTAINMENT = "Media & Entertainment"
+    ENERGY_NATURAL_RESOURCES = "Energy/Natural Resources"
+    MANUFACTURING = "Manufacturing"
+    INTERNET_TECHNOLOGY = "Internet Technology"
+    CHEMICALS_MATERIALS = "Chemicals & Materials"
+    INDUSTRIAL_PRODUCTS_SERVICES = "Industrial Products & Services"
+    ELECTRONICS = "Electronics"
+    BIOTECHNOLOGY = "Biotechnology"
+    MEDICAL_DEVICES_EQUIPMENT = "Medical Devices & Equipment"
+    FOOD_SERVICES_PRODUCTS = "Food Services & Products"
+    EDUCATION_TRAINING = "Education & Training"
+
+
+class InvestorFundType(str, Enum):
+    PRIVATE_EQUITY = "Private Equity Fund"
+    VENTURE_CAPITAL = "Venture Capital Fund"
+    SMALL_BUSINESS = "Small Business Investment Company"
+    INVESTMENT_BANK = "Investment Bank"
+    GOVERNMENT = "Government Organization"
+    STARTUP_STUDIO = "Startup Studio"
+
+
+class InvestorStagePreference(str, Enum):
+    EXPANSION = "Expansion"
+    MBO_LBO = "MBO/LBO"
+    EARLY_STAGE = "Early Stage"
+    STARTUP = "Startup"
+    SEED = "Seed"
+    RECAPITALIZATION = "Recapitalization"
+    ACQUISITION = "Acquisition"
+    LATER_STAGE = "Later Stage"
+    CORPORATE_DIVESTITURE = "Corporate Divestiture"
+    RESTRUCTURING = "Restructuring"
+    CONSOLIDATION = "Consolidation"
+    GOING_PRIVATE = "Going Private"
+    SPECIAL_SITUATIONS = "Special Situations"
+    TURNAROUND = "Turnaround"
+    PIPE = "PIPE"
+    SPINOUT = "Spinout"
+    OWNERSHIP_TRANSITION = "Ownership Transition"
+    SECONDARY_PURCHASE = "Secondary Purchase"
+    PRIVATIZATION = "Privatization"
+    DISTRESSED_DEBT = "Distressed Debt"
+
+
+class InvestorAssetsUnderManagement(str, Enum):
+    TIER_1B_PLUS = "$1B+"
+    TIER_100M_500M = "$100M - $500M"
+    TIER_500M_1B = "$500M - $1B"
+    TIER_25M_100M = "$25M - $100M"
+    TIER_0_25M = "$0 - $25M"
+
+
+class InvestorMinInvestment(str, Enum):
+    TIER_5M_20M = "$5M - $20M"
+    TIER_20M_PLUS = "$20M+"
+    TIER_1M_5M = "$1M - $5M"
+    TIER_250K_1M = "$250K - $1M"
+    TIER_0_250K = "$0 - $250K"
+
+
+class InvestorMaxInvestment(str, Enum):
+    TIER_25M_100M = "$25M - $100M"
+    TIER_10M_25M = "$10M - $25M"
+    TIER_100M_PLUS = "$100M+"
+    TIER_1M_10M = "$1M - $10M"
+    TIER_0_1M = "$0 - $1M"
+
+
+class InvestorNumberOfInvestors(str, Enum):
+    TIER_1_10 = "1 - 10"
+    TIER_10_20 = "10 - 20"
+    TIER_20_30 = "20 - 30"
+    TIER_30_40 = "30 - 40"
+
+
+class InvestorJobTitle(str, Enum):
+    PARTNER = "Partner"
+    MANAGING_DIRECTOR = "Managing Director"
+    MANAGING_PARTNER = "Managing Partner"
+    ASSOCIATE = "Associate"
+    PRINCIPAL = "Principal"
+    VICE_PRESIDENT = "Vice President"
+    SENIOR_ASSOCIATE = "Senior Associate"
+    GENERAL_PARTNER = "General Partner"
+    INVESTMENT_MANAGER = "Investment Manager"
+    INVESTMENT_DIRECTOR = "Investment Director"
+    DIRECTOR = "Director"
+    CFO = "CFO"
+    ANALYST = "Analyst"
+    CEO = "CEO"
+    FOUNDING_PARTNER = "Founding Partner"
+    VENTURE_PARTNER = "Venture Partner"
+    OPERATING_PARTNER = "Operating Partner"
+    PRESIDENT = "President"
+    CHAIRMAN = "Chairman"
+    SENIOR_MANAGING_DIRECTOR = "Senior Managing Director"
+
+
+class InvestorGender(str, Enum):
+    MALE = "Male"  # 31,454
+    FEMALE = "Female"  # 4,572
+
+
+###########################################
+# Filter Parameters Models
+###########################################
 
 class LocationFilter(BaseModel):
+    """Location filter parameters"""
     city: Optional[List[str]] = None
     state: Optional[List[str]] = None
     country: Optional[List[str]] = None
     location_preferences: Optional[List[str]] = None
 
 
-class ContactAvailabilityFilter(BaseModel):
-    hasOfficeEmail: Optional[bool] = None
-    hasOfficePhone: Optional[bool] = None
-    hasOfficeAddress: Optional[bool] = None
+class ContactInfoFilter(BaseModel):
+    """Contact information filter parameters"""
+    hasEmail: Optional[bool] = None
+    hasPhone: Optional[bool] = None
+    hasAddress: Optional[bool] = None
 
 
 class IndustryFilter(BaseModel):
+    """Industry preferences filter parameters"""
     industries: Optional[List[str]] = None
 
 
 class StagePreferencesFilter(BaseModel):
+    """Investment stage preferences filter parameters"""
     stages: Optional[List[str]] = None
 
 
 class FundTypeFilter(BaseModel):
+    """Fund type filter parameters"""
     types: Optional[List[str]] = None
 
 
 class InvestmentRangesFilter(BaseModel):
+    """Investment range filter parameters"""
     assetsUnderManagement: Optional[str] = None
     minInvestment: Optional[str] = None
     maxInvestment: Optional[str] = None
 
 
 class InvestorCountFilter(BaseModel):
+    """Number of investors filter parameters"""
     range: Optional[str] = None
 
 
 class GenderRatioFilter(BaseModel):
+    """Gender ratio filter parameters"""
     ratio: Optional[str] = None
 
 
 class GenderFilter(BaseModel):
+    """Gender filter parameters"""
     gender: Optional[str] = None
-
-
-class FirmFilter(BaseModel):
-    names: Optional[List[str]] = None
 
 
 class JobTitleFilter(BaseModel):
+    """Job title filter parameters"""
     titles: Optional[List[str]] = None
 
 
-class ContactInfoFilter(BaseModel):
-    hasEmail: Optional[bool] = None
-    hasPhone: Optional[bool] = None
-    hasAddress: Optional[bool] = None
+# Main filter parameter models
+class InvestorFilterParams(BaseModel):
+    """Complete investor filter parameters"""
+    searchTerm: Optional[str] = None
+    location: Optional[LocationFilter] = None
+    contactInfo: Optional[ContactInfoFilter] = None
+    industry: Optional[IndustryFilter] = None
+    fundType: Optional[FundTypeFilter] = None
+    stages: Optional[StagePreferencesFilter] = None
+    investmentRanges: Optional[InvestmentRangesFilter] = None
+    jobTitle: Optional[JobTitleFilter] = None
+    gender: Optional[GenderFilter] = None
+
+    class Config:
+        use_enum_values = True
 
 
-# ==================== Base Models ====================
+###########################################
+# Base Models
+###########################################
 
-class InvestorBase(BaseModel):
+class InvestorBase(BaseModel):  # Changed from Base to BaseModel
     prefix: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    first_name: str
+    last_name: str
     gender: Optional[str] = None
     contact_title: Optional[str] = None
-    email: Optional[str] = None
+    email: str
     phone: Optional[str] = None
-    office_email: Optional[str] = None
-    office_phone: Optional[str] = None
     office_website: Optional[str] = None
-    office_address: Optional[str] = None
     firm_name: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
@@ -271,9 +526,6 @@ class InvestorBase(BaseModel):
     capital_managed: Optional[float] = None
     min_investment: Optional[float] = None
     max_investment: Optional[float] = None
-    assets_under_management: Optional[float] = None
-    number_of_investors: Optional[int] = None
-    gender_ratio: Optional[str] = None
 
 
 class InvestorCreate(InvestorBase):
@@ -282,10 +534,11 @@ class InvestorCreate(InvestorBase):
 
 class Investor(InvestorBase):
     id: int
+
     model_config = ConfigDict(from_attributes=True)
 
 
-class InvestmentFundBase(BaseModel):
+class InvestmentFundBase(BaseModel):  # Changed from Base to BaseModel
     full_name: str
     title: Optional[str] = None
     contact_email: str
@@ -308,10 +561,8 @@ class InvestmentFundBase(BaseModel):
     min_investment: Optional[float] = None
     max_investment: Optional[float] = None
     firm_type: Optional[str] = None
+
     description: Optional[str] = None
-    number_of_investors: Optional[int] = None
-    gender_ratio: Optional[str] = None
-    assets_under_management: Optional[float] = None
 
 
 class InvestmentFundCreate(InvestmentFundBase):
@@ -326,26 +577,8 @@ class InvestmentFund(InvestmentFundBase):
     )
 
 
-# ==================== Filter Params ====================
-
-class InvestorFilterParams(BaseModel):
-    searchTerm: Optional[str] = None
-    location: Optional[LocationFilter] = None
-    contactInfo: Optional[ContactInfoFilter] = None
-    industry: Optional[IndustryFilter] = None
-    fundType: Optional[FundTypeFilter] = None  # Added
-    stages: Optional[StagePreferencesFilter] = None
-    investmentRanges: Optional[InvestmentRangesFilter] = None
-    firm: Optional[FirmFilter] = None  # Added
-    jobTitle: Optional[JobTitleFilter] = None  # Added
-    investorCount: Optional[InvestorCountFilter] = None
-    gender: Optional[GenderFilter] = None
-
-    class Config:
-        use_enum_values = True
-
-
 class InvestmentFundFilterParams(BaseModel):
+    """Complete investment fund filter parameters"""
     searchTerm: Optional[str] = None
     location: Optional[LocationFilter] = None
     contactInfo: Optional[ContactInfoFilter] = None
@@ -360,21 +593,22 @@ class InvestmentFundFilterParams(BaseModel):
         use_enum_values = True
 
 
-# ==================== List Classes ====================
 class SavedListBase(BaseModel):
+    """Base class for saved lists"""
     name: str
     description: Optional[str] = None
-    list_type: str
+    list_type: str  # 'investor' or 'fund'
 
 
 class SavedListCreate(SavedListBase):
+    """Create schema for saved lists"""
     pass
 
 
 class SavedList(SavedListBase):
+    """Response schema for saved lists"""
     id: int
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
