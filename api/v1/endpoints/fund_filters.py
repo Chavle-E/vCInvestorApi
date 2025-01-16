@@ -1,0 +1,139 @@
+from fastapi import APIRouter
+import schemas
+import logging
+
+router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+# Investment Fund Filter Values
+@router.get('/investment-funds/cities')
+def return_cities():
+    return {
+        "cities": [{
+            "label": city.value, "value": city.name
+        }
+            for city in schemas.InvestmentFundCity
+        ]
+    }
+
+
+@router.get('/investment-funds/states')
+def return_states():
+    return {
+        "states": [{
+            "label": state.value, "value": state.name
+        }
+            for state in schemas.InvestmentFundState
+        ]
+    }
+
+
+@router.get('/investment-funds/countries')
+def return_countries():
+    return {
+        "countries": [{
+            "label": country.value, "value": country.name
+        }
+            for country in schemas.InvestmentFundCountry
+        ]
+    }
+
+
+@router.get('/investment-funds/location-preferences')
+def return_location_preferences():
+    return {
+        "location_preferences": [{
+            "label": location.value, "value": location.name
+        }
+            for location in schemas.InvestmentFundLocationPreference
+        ]
+    }
+
+
+@router.get('/investment-funds/industry-preferences')
+def return_industry_preferences():
+    return {
+        "industry_preferences": [{
+            "label": industry.value, "value": industry.name
+        }
+            for industry in schemas.InvestmentFundIndustryPreference
+        ]
+    }
+
+
+@router.get('/investment-funds/fund-types')
+def return_fund_types():
+    return {
+        "fund_types": [{
+            "label": fund_type.value, "value": fund_type.name
+        }
+            for fund_type in schemas.InvestmentFundType
+        ]
+    }
+
+
+@router.get('/investment-funds/stage-preferences')
+def return_stage_preferences():
+    return {
+        "stage_preferences": [{
+            "label": stage.value, "value": stage.name
+        }
+            for stage in schemas.InvestmentFundStagePreference
+        ]
+    }
+
+
+@router.get('/investment-funds/assets-under-management')
+def return_assets_under_management():
+    return {
+        "assets_under_management": [{
+            "label": asset.value, "value": asset.name
+        }
+            for asset in schemas.InvestmentFundAssetsUnderManagement
+        ]
+    }
+
+
+@router.get('/investment-funds/min-investment')
+def return_min_investment():
+    return {
+        "minimum_investment": [{
+            "label": investment.value, "value": investment.name
+        }
+            for investment in schemas.InvestmentFundMinInvestment
+        ]
+    }
+
+
+@router.get('/investment-funds/max-investment')
+def return_max_investment():
+    return {
+        "maximum_investment": [{
+            "label": investment.value, "value": investment.name
+        }
+            for investment in schemas.InvestmentFundMaxInvestment
+        ]
+    }
+
+
+@router.get('/investment-funds/number-of-investors')
+def return_number_of_investors():
+    return {
+        "number_of_investors": [{
+            "label": number.value, "value": number.name
+        }
+            for number in schemas.InvestmentFundNumberOfInvestors
+        ]
+    }
+
+
+@router.get('/investment-funds/gender-ratio')
+def return_gender_ratio():
+    return {
+        "gender_ratio": [{
+            "label": gender.value, "value": gender.name
+        }
+            for gender in schemas.InvestmentFundGenderRatio
+        ]
+    }

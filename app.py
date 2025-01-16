@@ -8,7 +8,8 @@ from api.v1.endpoints import (
     utils,
     lists,
     counts,
-    investor_filters
+    investor_filters,
+    fund_filters
 )
 from database import engine, get_db, test_db_connection
 import models
@@ -113,7 +114,8 @@ protected_routes = [
     (export.router, "/api/v1/export", "export", "professional"),
     (lists.router, "/api/v1/lists", "lists", "basic"),
     (counts.router, "/api/v1/counts", "counts", "basic"),
-    (investor_filters.router, "/api/v1/filters", "Investor Filters", "basic")
+    (investor_filters.router, "/api/v1/filters", "Investor Filters", "basic"),
+    (fund_filters.router, "/api/v1/filters", "Fund Filters", "basic")
 ]
 
 for router, prefix, tag, _ in protected_routes:
