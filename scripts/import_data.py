@@ -55,6 +55,7 @@ def get_column_mappings(model):
             'Office Website': 'office_website',
             'Firm Name': 'firm_name',
             'City': 'city',
+            'State': 'state',
             'Country': 'country',
             'Type of Financing': 'type_of_financing',
             'Industry Preferences': 'industry_preferences',

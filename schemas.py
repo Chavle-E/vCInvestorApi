@@ -2,9 +2,6 @@ from enum import Enum
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
-from database import Base
-from sqlalchemy import Column, Integer, String, Float, Text
-from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 
 
 ###########################################
@@ -213,8 +210,6 @@ class InvestmentFundGenderRatio(str, Enum):
 
 
 ###########################################
-
-
 # Investor Filter Enums
 ###########################################
 
@@ -420,8 +415,8 @@ class InvestorJobTitle(str, Enum):
 
 
 class InvestorGender(str, Enum):
-    MALE = "Male"  # 31,454
-    FEMALE = "Female"  # 4,572
+    MALE = "Male"
+    FEMALE = "Female"
 
 
 ###########################################
@@ -506,7 +501,7 @@ class InvestorFilterParams(BaseModel):
 # Base Models
 ###########################################
 
-class InvestorBase(BaseModel):  # Changed from Base to BaseModel
+class InvestorBase(BaseModel):
     prefix: Optional[str] = None
     first_name: str
     last_name: str
@@ -538,7 +533,7 @@ class Investor(InvestorBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class InvestmentFundBase(BaseModel):  # Changed from Base to BaseModel
+class InvestmentFundBase(BaseModel):
     full_name: str
     title: Optional[str] = None
     contact_email: str

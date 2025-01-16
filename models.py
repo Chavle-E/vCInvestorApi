@@ -1,10 +1,9 @@
-from sqlalchemy import Column, Integer, String, Float, Text
+from sqlalchemy import Float, Text
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
-from sqlalchemy.sql import func
 from database import Base
 from sqlalchemy import Column, Integer, String, ForeignKey, Table, DateTime
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, UTC
 
 # Association tables for many-to-many relationships
 saved_investors_association = Table(
@@ -28,8 +27,8 @@ class SavedList(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now(UTC))
+    updated_at = Column(DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC))
     list_type = Column(String, nullable=False)  # 'investor' or 'fund'
 
     # Relationships

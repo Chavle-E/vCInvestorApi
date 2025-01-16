@@ -103,7 +103,6 @@ async def search_investors(
                 models.Investor.first_name.ilike(search),
                 models.Investor.last_name.ilike(search),
                 models.Investor.firm_name.ilike(search),
-                models.Investor.email.ilike(search),
                 models.Investor.contact_title.ilike(search)
             ))
 

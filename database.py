@@ -1,4 +1,3 @@
-# database.py
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 import os
