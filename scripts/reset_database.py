@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlalchemy import create_engine, inspect
 from database import SQLALCHEMY_DATABASE_URL
 from models import Base

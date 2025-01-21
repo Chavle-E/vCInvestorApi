@@ -15,7 +15,7 @@ logger = logging.getLogger("sqlalchemy.engine")
 
 # Get database URL from environment variables with fallback
 SQLALCHEMY_DATABASE_URL = os.getenv(
-    "DATABASE_URL",
+    "DATABASE_URL_LOCAL",
     "postgresql://investor_admin:your_secure_password@localhost/investor_db"
 )
 print(SQLALCHEMY_DATABASE_URL)
