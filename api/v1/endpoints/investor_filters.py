@@ -7,6 +7,57 @@ logger = logging.getLogger(__name__)
 
 
 # Investor Filter Values
+@router.get('/investors/email')
+def return_email():
+    return {
+        "email": [
+            {
+                "label": "Has Email",
+                "value": "has_email"
+            },
+            {
+                "label": "No Email",
+                "value": "no_email"
+            }
+        ]
+
+    }
+
+
+@router.get('/investors/phone')
+def return_phone():
+    return {
+        "phone": [
+            {
+                "label": "Has Phone",
+                "value": "has_phone"
+            },
+            {
+                "label": "No Phone",
+                "value": "no_phone"
+            }
+        ]
+
+    }
+
+
+@router.get('/investors/address')
+def return_phone():
+    return {
+        "phone": [
+            {
+                "label": "Has Address",
+                "value": "has_address"
+            },
+            {
+                "label": "No Address",
+                "value": "no_address"
+            }
+        ]
+
+    }
+
+
 @router.get('/investors/cities')
 def return_cities():
     return {
@@ -62,7 +113,7 @@ def return_industry_preferences():
     }
 
 
-@router.get('investors/fund_type')
+@router.get('/investors/fund_type')
 def return_fund_type():
     return {
         "fund_types": [{
@@ -73,7 +124,7 @@ def return_fund_type():
     }
 
 
-@router.get('investors/stage_preferences')
+@router.get('/investors/stage_preferences')
 def return_stage_preferences():
     return {
         "stage_preferences": [{
@@ -84,7 +135,7 @@ def return_stage_preferences():
     }
 
 
-@router.get('investors/assets_under_management')
+@router.get('/investors/assets_under_management')
 def return_assets_under_management():
     return {
         "assets_under_management": [{
@@ -95,7 +146,7 @@ def return_assets_under_management():
     }
 
 
-@router.get('investors/min_investment')
+@router.get('/investors/min_investment')
 def return_min_investment():
     return {
         "minimum_investment": [{
@@ -106,7 +157,7 @@ def return_min_investment():
     }
 
 
-@router.get('investors/max_investment')
+@router.get('/investors/max_investment')
 def return_max_investment():
     return {
         "maximum_investment": [{
@@ -117,7 +168,7 @@ def return_max_investment():
     }
 
 
-@router.get('investors/number_of_investors')
+@router.get('/investors/number_of_investors')
 def return_number_of_investors():
     return {
         "number_of_investors": [{
@@ -128,7 +179,7 @@ def return_number_of_investors():
     }
 
 
-@router.get('investors/gender')
+@router.get('/investors/gender')
 def return_gender():
     return {
         "gender": [{

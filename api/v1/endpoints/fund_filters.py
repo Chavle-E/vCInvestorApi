@@ -7,6 +7,23 @@ logger = logging.getLogger(__name__)
 
 
 # Investment Fund Filter Values
+@router.get('/investors/phone')
+def return_phone():
+    return {
+        "phone": [
+            {
+                "label": "Has Phone",
+                "value": "has_phone"
+            },
+            {
+                "label": "No Phone",
+                "value": "no_phone"
+            }
+        ]
+
+    }
+
+
 @router.get('/investment-funds/cities')
 def return_cities():
     return {
