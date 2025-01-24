@@ -26,105 +26,105 @@ def read_funds(
         per_page: int = Query(50, gt=0, le=100, description="Items per page")
 ):
     try:
-        # Get total count
         total = db.query(models.InvestmentFund).count()
-
-        # Calculate skip
         skip = (page - 1) * per_page
-
-        # Get paginated results
         funds = crud.investment_fund.get_multi(
             db=db,
             skip=skip,
             limit=per_page
         )
-
         return {
             "total": total,
             "page": page,
             "per_page": per_page,
             "total_pages": -(-total // per_page),
-            "data": funds
+            "results": funds
         }
     except Exception as e:
         logger.error(f"Error fetching funds: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def apply_fund_contact_filters(query, email=None, phone=None, address=None):
+    if email:
+        if email == "has_email":
+            query = query.filter(
+                (models.InvestmentFund.contact_email.isnot(None)) |
+                (models.InvestmentFund.firm_email.isnot(None))
+            )
+        elif email == "no_email":
+            query = query.filter(
+                (models.InvestmentFund.contact_email.is_(None)) &
+                (models.InvestmentFund.firm_email.is_(None))
+            )
+
+    if phone:
+        if phone == "has_phone":
+            query = query.filter(
+                (models.InvestmentFund.contact_phone.isnot(None)) |
+                (models.InvestmentFund.firm_phone.isnot(None))
+            )
+        elif phone == "no_phone":
+            query = query.filter(
+                (models.InvestmentFund.contact_phone.is_(None)) &
+                (models.InvestmentFund.firm_phone.is_(None))
+            )
+
+    if address:
+        if address == "has_address":
+            query = query.filter(models.InvestmentFund.firm_address.isnot(None))
+        elif address == "no_address":
+            query = query.filter(models.InvestmentFund.firm_address.is_(None))
+
+    return query
+
+
 @router.get("/search")
 async def search_funds_get(
-        # Search and pagination
         search_term: Optional[str] = None,
         page: int = Query(1, gt=0),
         per_page: int = Query(50, gt=1, le=100),
-
-        # Location filters
+        email: Optional[str] = Query(None, enum=["has_email", "no_email"]),
+        phone: Optional[str] = Query(None, enum=["has_phone", "no_phone"]),
+        address: Optional[str] = Query(None, enum=["has_address", "no_address"]),
         cities: Optional[List[str]] = Query(None),
         states: Optional[List[str]] = Query(None),
         countries: Optional[List[str]] = Query(None),
-        location_preferences: Optional[List[str]] = Query(None),
-
-        # Contact info filters
-        has_email: Optional[bool] = Query(None),
-        has_phone: Optional[bool] = Query(None),
-        has_address: Optional[bool] = Query(None),
-
-        # Industry filters
         industries: Optional[List[str]] = Query(None),
-
-        # Fund type filters
         fund_types: Optional[List[str]] = Query(None),
-
-        # Stage filters
         stages: Optional[List[str]] = Query(None),
-
-        # Investment range filters
-        assets_under_management: Optional[str] = Query(None),
-        min_investment: Optional[str] = Query(None),
-        max_investment: Optional[str] = Query(None),
-
         db: Session = Depends(get_db)
 ):
-    """
-    Search investment funds using query parameters instead of POST body
-    """
-    # Construct filter object from query parameters
-    filters = schemas.InvestmentFundFilterParams(
-        searchTerm=search_term,
-        location=schemas.LocationFilter(
-            city=cities,
-            state=states,
-            country=countries,
-            location_preferences=location_preferences
-        ) if any([cities, states, countries, location_preferences]) else None,
-        contactInfo=schemas.ContactInfoFilter(
-            hasEmail=has_email,
-            hasPhone=has_phone,
-            hasAddress=has_address
-        ) if any([has_email, has_phone, has_address]) else None,
-        industry=schemas.IndustryFilter(
-            industries=industries
-        ) if industries else None,
-        fundType=schemas.FundTypeFilter(
-            types=fund_types
-        ) if fund_types else None,
-        stages=schemas.StagePreferencesFilter(
-            stages=stages
-        ) if stages else None,
-        investmentRanges=schemas.InvestmentRangesFilter(
-            assetsUnderManagement=assets_under_management,
-            minInvestment=min_investment,
-            maxInvestment=max_investment
-        ) if any([assets_under_management, min_investment, max_investment]) else None
-    )
-
+    """Search investment funds using query parameters"""
     try:
         query = db.query(models.InvestmentFund)
 
-        # Apply filters using existing function
-        query = apply_fund_filters(query, filters)
+        if search_term:
+            search = f"%{search_term}%"
+            query = query.filter(
+                models.InvestmentFund.firm_name.ilike(search) |
+                models.InvestmentFund.contact_email.ilike(search) |
+                models.InvestmentFund.firm_email.ilike(search)
+            )
 
-        # Calculate pagination
+        query = apply_fund_contact_filters(query, email, phone, address)
+
+        if cities:
+            query = query.filter(models.InvestmentFund.firm_city.in_(cities))
+        if states:
+            query = query.filter(models.InvestmentFund.firm_state.in_(states))
+        if countries:
+            query = query.filter(models.InvestmentFund.firm_country.in_(countries))
+
+        if industries:
+            query = query.filter(models.InvestmentFund.industry_preferences.overlap(industries))
+
+        if fund_types:
+            query = query.filter(models.InvestmentFund.firm_type.in_(fund_types))
+
+        if stages:
+            query = query.filter(models.InvestmentFund.stage_preferences.overlap(stages))
+
         total = query.count()
         skip = (page - 1) * per_page
         results = query.offset(skip).limit(per_page).all()
@@ -185,10 +185,40 @@ def apply_fund_filters(query, filters):
     if filters.searchTerm:
         search = f"%{filters.searchTerm}%"
         query = query.filter(models.InvestmentFund.firm_name.ilike(search) |
-                             models.InvestmentFund.full_name.ilike(search) |
-                             models.InvestmentFund.firm_email.ilike(search) |
                              models.InvestmentFund.contact_email.ilike(search) |
+                             models.InvestmentFund.firm_email.ilike(search) |
                              models.InvestmentFund.description.ilike(search))
+
+    if filters.contactInfo:
+        if filters.contactInfo.hasEmail is not None:
+            if filters.contactInfo.hasEmail:
+                query = query.filter(
+                    (models.InvestmentFund.contact_email.isnot(None)) |
+                    (models.InvestmentFund.firm_email.isnot(None))
+                )
+            else:
+                query = query.filter(
+                    (models.InvestmentFund.contact_email.is_(None)) &
+                    (models.InvestmentFund.firm_email.is_(None))
+                )
+
+        if filters.contactInfo.hasPhone is not None:
+            if filters.contactInfo.hasPhone:
+                query = query.filter(
+                    (models.InvestmentFund.contact_phone.isnot(None)) |
+                    (models.InvestmentFund.firm_phone.isnot(None))
+                )
+            else:
+                query = query.filter(
+                    (models.InvestmentFund.contact_phone.is_(None)) &
+                    (models.InvestmentFund.firm_phone.is_(None))
+                )
+
+        if filters.contactInfo.hasAddress is not None:
+            if filters.contactInfo.hasAddress:
+                query = query.filter(models.InvestmentFund.firm_address.isnot(None))
+            else:
+                query = query.filter(models.InvestmentFund.firm_address.is_(None))
 
     if filters.location:
         if filters.location.city:

@@ -509,12 +509,14 @@ class InvestorBase(BaseModel):
     contact_title: Optional[str] = None
     email: str
     phone: Optional[str] = None
+    address: Optional[str] = None
     office_website: Optional[str] = None
     firm_name: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
     country: Optional[str] = None
-    type_of_financing: Optional[str] = None
+    type_of_firm: Optional[str] = None
+    type_of_financing: Optional[List[str]] = None
     industry_preferences: Optional[List[str]] = None
     geographic_preferences: Optional[List[str]] = None
     stage_preferences: Optional[List[str]] = None

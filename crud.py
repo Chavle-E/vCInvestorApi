@@ -99,17 +99,13 @@ class CRUDBase(Generic[ModelType, CreateSchemaType]):
         for column in obj.__table__.columns:
             value = getattr(obj, column.name)
 
-            # Handle different types of values
             if isinstance(value, (float, Decimal)):
-                # Handle non-JSON-compliant float values
                 if value is None or math.isnan(float(value)) or math.isinf(float(value)):
                     result[column.name] = None
                 else:
                     result[column.name] = float(value)
             elif isinstance(value, list):
-                # Handle lists (like arrays from postgres)
                 if value and isinstance(value[0], str) and value[0].startswith('{'):
-                    # Handle PostgreSQL array format {item1,item2}
                     cleaned = value[0].strip('{}').split(',')
                     result[column.name] = [item.strip('"') for item in cleaned if item]
                 else:
