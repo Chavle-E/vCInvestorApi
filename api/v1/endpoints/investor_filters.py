@@ -12,12 +12,12 @@ def return_email():
     return {
         "email": [
             {
-                "label": "Has Email",
-                "value": "Has Email"
+                "label": "has_email",
+                "value": "has_email"
             },
             {
-                "label": "No Email",
-                "value": "No Email"
+                "label": "no_email",
+                "value": "no_email"
             }
         ]
 
@@ -29,12 +29,12 @@ def return_phone():
     return {
         "phone": [
             {
-                "label": "Has Phone",
-                "value": "Has Phone"
+                "label": "has_phone",
+                "value": "has_phone"
             },
             {
-                "label": "No Phone",
-                "value": "No Phone"
+                "label": "no_phone",
+                "value": "no_phone"
             }
         ]
 
@@ -46,12 +46,12 @@ def return_address():
     return {
         "address": [
             {
-                "label": "Has Address",
-                "value": "Has Address"
+                "label": "has_address",
+                "value": "has_address"
             },
             {
-                "label": "No Address",
-                "value": "No Address"
+                "label": "no_address",
+                "value": "no_address"
             }
         ]
 

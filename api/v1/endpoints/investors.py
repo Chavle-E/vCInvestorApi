@@ -54,33 +54,51 @@ def normalize_enum_value(value: str) -> str:
 
 def string_to_float(value: str):
     if value == "$1B+":
-        return (1000000000, float('inf'))
+        return 1000000000, float('inf')
     if value == "$100M - $500M":
-        return (100000000, 500000000)
+        return 100000000, 500000000
     if value == "$500M - $1B":
-        return (500000000, 1000000000)
+        return 500000000, 1000000000
     if value == "$25M - $100M":
-        return (25000000, 100000000)
+        return 25000000, 100000000
     if value == "$0 - $25M":
-        return (0, 25000000)
+        return 1, 25000000
+    if value == "$10M - $25M":
+        return 10000000, 25000000
+    if value == "$100M+":
+        return 100000000, float('inf')
+    if value == "$1M - $10M":
+        return 1000000, 10000000
+    if value == "$0 - $1M":
+        return 1, 1000000
+    if value == "$5M - $20M":
+        return 5000000, 20000000
+    if value == "$20M+":
+        return 20000000, float('inf')
+    if value == "$1M - $5M":
+        return 1000000, 5000000
+    if value == "$250K - $1M":
+        return 250000, 1000000
+    if value == "$0 - $250K":
+        return 0, 250000
 
 
 def apply_contact_filters(query, email=None, phone=None, address=None):
     if email:
         if email.lower() == "has_email":
-            query = query.filter(models.Investor.email.isnot(None), models.Investor.email != '')
+            query = query.filter(models.Investor.email.isnot(None), models.Investor.email != 'NaN')
         elif email.lower() == "no_email":
             query = query.filter(or_(models.Investor.email.is_(None), models.Investor.email == 'NaN'))
 
     if phone:
         if phone.lower() == "has_phone":
-            query = query.filter(models.Investor.phone.isnot(None), models.Investor.phone != '')
+            query = query.filter(models.Investor.phone.isnot(None), models.Investor.phone != 'NaN')
         elif phone.lower() == "no_phone":
             query = query.filter(or_(models.Investor.phone.is_(None), models.Investor.phone == 'NaN'))
 
     if address:
         if address.lower() == "has_address":
-            query = query.filter(models.Investor.address.isnot(None), models.Investor.address != '')
+            query = query.filter(models.Investor.address.isnot(None), models.Investor.address != 'NaN')
         elif address.lower() == "no_address":
             query = query.filter(or_(models.Investor.address.is_(None), models.Investor.address == 'NaN'))
 
@@ -99,9 +117,13 @@ async def search_investors_get(
         states: Optional[str] = Query(None),
         countries: Optional[str] = Query(None),
         industries: Optional[Union[str, List[str]]] = Query(None),
+        geographic_preferences: Optional[Union[str, List[str]]] = Query(None),
         fund_types: Optional[str] = Query(None),
         stages: Optional[str] = Query(None),
         assets_under_management: Optional[str] = Query(None),
+        minimum_investment: Optional[str] = Query(None),
+        maximum_investment: Optional[str] = Query(None),
+        title: Optional[str] = Query(None),
         gender: Optional[str] = Query(None),
         db: Session = Depends(get_db)
 ):
@@ -139,11 +161,20 @@ async def search_investors_get(
             query = query.filter(models.Investor.type_of_firm.in_(normalized_fund_types))
         if stages:
             query = query.filter(models.Investor.stage_preferences.overlap([stages]))
-
+        if geographic_preferences:
+            query = query.filter(models.Investor.geographic_preferences.overlap([geographic_preferences]))
         if assets_under_management:
             lower, upper = string_to_float(assets_under_management)
             query = query.filter(models.Investor.capital_managed.between(lower, upper))
-
+        if minimum_investment:
+            lower, upper = string_to_float(minimum_investment)
+            query = query.filter(models.Investor.min_investment.between(lower, upper))
+        if maximum_investment:
+            lower, upper = string_to_float(maximum_investment)
+            query = query.filter(models.Investor.max_investment.between(lower, upper))
+        if title:
+            normalized_title = normalize_enum_value(title)
+            query = query.filter(models.Investor.contact_title == normalized_title)
         if gender:
             normalized_gender = normalize_enum_value(gender)
             query = query.filter(models.Investor.gender == normalized_gender)
