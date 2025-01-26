@@ -168,13 +168,24 @@ def return_max_investment():
     }
 
 
-@router.get('/investors/title')
+@router.get('/investors/job_title')
 def return_job_title():
     return {
-        "title": [{
+        "job_title": [{
             "label": title.value, "value": title.value
         }
             for title in schemas.InvestorJobTitle
+        ]
+    }
+
+
+@router.get('/investors/number_of_investors')
+def return_investors_amount():
+    return {
+        "number_of_investors": [{
+            "label": investorsNumber.value, "value": investorsNumber.value
+        }
+            for investorsNumber in schemas.InvestorNumberOfInvestors
         ]
     }
 

@@ -81,6 +81,14 @@ def string_to_float(value: str):
         return 250000, 1000000
     if value == "$0 - $250K":
         return 0, 250000
+    if value == "1 - 10":
+        return 1, 9.99
+    if value == "10 - 20":
+        return 10, 19.99
+    if value == "20 - 30":
+        return 20, 29.99
+    if value == "30 - 40":
+        return 30, 40
 
 
 def apply_contact_filters(query, email=None, phone=None, address=None):
@@ -124,6 +132,7 @@ async def search_investors_get(
         minimum_investment: Optional[str] = Query(None),
         maximum_investment: Optional[str] = Query(None),
         title: Optional[str] = Query(None),
+        number_of_investors: Optional[str] = Query(None),
         gender: Optional[str] = Query(None),
         db: Session = Depends(get_db)
 ):
@@ -175,6 +184,9 @@ async def search_investors_get(
         if title:
             normalized_title = normalize_enum_value(title)
             query = query.filter(models.Investor.contact_title == normalized_title)
+        if number_of_investors:
+            lower, upper = string_to_float(number_of_investors)
+            query = query.filter(models.Investor.number_of_investors.between(lower, upper))
         if gender:
             normalized_gender = normalize_enum_value(gender)
             query = query.filter(models.Investor.gender == normalized_gender)

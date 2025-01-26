@@ -62,7 +62,7 @@ def return_address():
 def return_cities():
     return {
         "cities": [{
-            "label": city.value, "value": city.name
+            "label": city.value, "value": city.value
         }
             for city in schemas.InvestmentFundCity
         ]
@@ -73,7 +73,7 @@ def return_cities():
 def return_states():
     return {
         "states": [{
-            "label": state.value, "value": state.name
+            "label": state.value, "value": state.value
         }
             for state in schemas.InvestmentFundState
         ]
@@ -84,7 +84,7 @@ def return_states():
 def return_countries():
     return {
         "countries": [{
-            "label": country.value, "value": country.name
+            "label": country.value, "value": country.value
         }
             for country in schemas.InvestmentFundCountry
         ]
@@ -95,7 +95,7 @@ def return_countries():
 def return_location_preferences():
     return {
         "location_preferences": [{
-            "label": location.value, "value": location.name
+            "label": location.value, "value": location.value
         }
             for location in schemas.InvestmentFundLocationPreference
         ]
@@ -106,7 +106,7 @@ def return_location_preferences():
 def return_industry_preferences():
     return {
         "industry_preferences": [{
-            "label": industry.value, "value": industry.name
+            "label": industry.value, "value": industry.value
         }
             for industry in schemas.InvestmentFundIndustryPreference
         ]
@@ -117,7 +117,7 @@ def return_industry_preferences():
 def return_fund_types():
     return {
         "fund_types": [{
-            "label": fund_type.value, "value": fund_type.name
+            "label": fund_type.value, "value": fund_type.value
         }
             for fund_type in schemas.InvestmentFundType
         ]
@@ -128,7 +128,7 @@ def return_fund_types():
 def return_stage_preferences():
     return {
         "stage_preferences": [{
-            "label": stage.value, "value": stage.name
+            "label": stage.value, "value": stage.value
         }
             for stage in schemas.InvestmentFundStagePreference
         ]
@@ -139,7 +139,7 @@ def return_stage_preferences():
 def return_assets_under_management():
     return {
         "assets_under_management": [{
-            "label": asset.value, "value": asset.name
+            "label": asset.value, "value": asset.value
         }
             for asset in schemas.InvestmentFundAssetsUnderManagement
         ]
@@ -150,7 +150,7 @@ def return_assets_under_management():
 def return_min_investment():
     return {
         "minimum_investment": [{
-            "label": investment.value, "value": investment.name
+            "label": investment.value, "value": investment.value
         }
             for investment in schemas.InvestmentFundMinInvestment
         ]
@@ -161,7 +161,7 @@ def return_min_investment():
 def return_max_investment():
     return {
         "maximum_investment": [{
-            "label": investment.value, "value": investment.name
+            "label": investment.value, "value": investment.value
         }
             for investment in schemas.InvestmentFundMaxInvestment
         ]
@@ -172,7 +172,7 @@ def return_max_investment():
 def return_number_of_investors():
     return {
         "number_of_investors": [{
-            "label": number.value, "value": number.name
+            "label": number.value, "value": number.value
         }
             for number in schemas.InvestmentFundNumberOfInvestors
         ]
@@ -183,7 +183,7 @@ def return_number_of_investors():
 def return_gender_ratio():
     return {
         "gender_ratio": [{
-            "label": gender.value, "value": gender.name
+            "label": gender.value, "value": gender.value
         }
             for gender in schemas.InvestmentFundGenderRatio
         ]
