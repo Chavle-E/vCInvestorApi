@@ -29,11 +29,11 @@ def return_phone():
     return {
         "phone": [
             {
-                "label": "Has Phone",
+                "label": "has_phone",
                 "value": "has_phone"
             },
             {
-                "label": "No Phone",
+                "label": "no_phone",
                 "value": "no_phone"
             }
         ]
@@ -46,11 +46,11 @@ def return_address():
     return {
         "address": [
             {
-                "label": "Has Address",
+                "label": "has_address",
                 "value": "has_address"
             },
             {
-                "label": "No Address",
+                "label": "no_address",
                 "value": "no_address"
             }
         ]

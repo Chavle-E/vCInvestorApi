@@ -60,6 +60,7 @@ class Investor(Base):
     capital_managed = Column(Float, nullable=True)
     min_investment = Column(Float, nullable=True)
     max_investment = Column(Float, nullable=True)
+    number_of_investors = Column(Float, nullable=True)
 
 
 class InvestmentFund(Base):
@@ -88,4 +89,5 @@ class InvestmentFund(Base):
     min_investment = Column(Float, nullable=True)
     max_investment = Column(Float, nullable=True)
     firm_type = Column(String, nullable=True)
-    description = Column(Text, nullable=True)
+    number_of_investors = Column(Float, nullable=True)
+    gender_ratio = Column(String, nullable=True)

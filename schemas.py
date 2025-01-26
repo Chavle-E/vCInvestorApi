@@ -523,6 +523,7 @@ class InvestorBase(BaseModel):
     capital_managed: Optional[float] = None
     min_investment: Optional[float] = None
     max_investment: Optional[float] = None
+    number_of_investors: Optional[float] = None
 
 
 class InvestorCreate(InvestorBase):
@@ -558,8 +559,8 @@ class InvestmentFundBase(BaseModel):
     min_investment: Optional[float] = None
     max_investment: Optional[float] = None
     firm_type: Optional[str] = None
-
-    description: Optional[str] = None
+    number_of_investors: Optional[float] = None
+    gender_ratio: Optional[str] = None
 
 
 class InvestmentFundCreate(InvestmentFundBase):

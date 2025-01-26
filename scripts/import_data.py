@@ -33,6 +33,7 @@ def get_column_mappings(model):
         'Geographic Preferences': 'geographic_preferences',
         'Stage Preferences': 'stage_preferences',
         'Capital Managed': 'capital_managed',
+        'Number Of Investors': 'number_of_investors',
     }
 
     if model == InvestmentFund:
@@ -55,7 +56,8 @@ def get_column_mappings(model):
             'Financing Type': 'financing_type',
             'Min. Investment': 'min_investment',
             'Max. Investment': 'max_investment',
-            'Firm Type': 'firm_type'
+            'Firm Type': 'firm_type',
+            'Gender Ratio': 'gender_ratio'
         }
     else:  # Investor
         return {
@@ -127,6 +129,12 @@ def clean_and_convert_data(df: pd.DataFrame, model: Type[Union[Investor, Investm
     for col in numeric_cols:
         if col in df.columns:
             df[col] = df[col].apply(convert_currency)
+
+    if 'number_of_investors' in df.columns:
+        df['number_of_investors'] = df['number_of_investors'].apply(lambda x: float(x) if pd.notnull(x) else None)
+
+    if 'gender_ratio' in df.columns:
+        df['gender_ratio'] = df['gender_ratio'].astype(str)
 
     list_fields = ['industry_preferences', 'geographic_preferences', 'stage_preferences']
     if model == Investor:

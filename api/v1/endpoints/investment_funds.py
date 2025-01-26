@@ -49,34 +49,61 @@ def apply_fund_contact_filters(query, email=None, phone=None, address=None):
     if email:
         if email == "has_email":
             query = query.filter(
-                (models.InvestmentFund.contact_email.isnot(None)) |
-                (models.InvestmentFund.firm_email.isnot(None))
+                (models.InvestmentFund.firm_email != 'NaN')
             )
         elif email == "no_email":
             query = query.filter(
-                (models.InvestmentFund.contact_email.is_(None)) &
-                (models.InvestmentFund.firm_email.is_(None))
+                (models.InvestmentFund.firm_email == 'NaN')
             )
 
     if phone:
         if phone == "has_phone":
             query = query.filter(
-                (models.InvestmentFund.contact_phone.isnot(None)) |
-                (models.InvestmentFund.firm_phone.isnot(None))
+                (models.InvestmentFund.firm_phone != 'NaN')
             )
         elif phone == "no_phone":
             query = query.filter(
-                (models.InvestmentFund.contact_phone.is_(None)) &
-                (models.InvestmentFund.firm_phone.is_(None))
+                (models.InvestmentFund.firm_phone == 'NaN')
             )
 
     if address:
         if address == "has_address":
-            query = query.filter(models.InvestmentFund.firm_address.isnot(None))
+            query = query.filter(models.InvestmentFund.firm_address != 'NaN')
         elif address == "no_address":
-            query = query.filter(models.InvestmentFund.firm_address.is_(None))
+            query = query.filter(models.InvestmentFund.firm_address == 'NaN')
 
     return query
+
+
+def string_to_float(value: str):
+    if value == "$1B+":
+        return 1000000000, float('inf')
+    if value == "$100M - $500M":
+        return 100000000, 500000000
+    if value == "$500M - $1B":
+        return 500000000, 1000000000
+    if value == "$25M - $100M":
+        return 25000000, 100000000
+    if value == "$0 - $25M":
+        return 1, 25000000
+    if value == "$10M - $25M":
+        return 10000000, 25000000
+    if value == "$100M+":
+        return 100000000, float('inf')
+    if value == "$1M - $10M":
+        return 1000000, 10000000
+    if value == "$0 - $1M":
+        return 1, 1000000
+    if value == "$5M - $20M":
+        return 5000000, 20000000
+    if value == "$20M+":
+        return 20000000, float('inf')
+    if value == "$1M - $5M":
+        return 1000000, 5000000
+    if value == "$250K - $1M":
+        return 250000, 1000000
+    if value == "$0 - $250K":
+        return 0, 250000
 
 
 @router.get("/search")
@@ -84,15 +111,19 @@ async def search_funds_get(
         search_term: Optional[str] = None,
         page: int = Query(1, gt=0),
         per_page: int = Query(50, gt=1, le=100),
-        email: Optional[str] = Query(None, enum=["has_email", "no_email"]),
-        phone: Optional[str] = Query(None, enum=["has_phone", "no_phone"]),
-        address: Optional[str] = Query(None, enum=["has_address", "no_address"]),
+        email: Optional[str] = Query(None),
+        phone: Optional[str] = Query(None),
+        address: Optional[str] = Query(None),
         cities: Optional[List[str]] = Query(None),
         states: Optional[List[str]] = Query(None),
         countries: Optional[List[str]] = Query(None),
+        location_preferences: Optional[list[str]] = Query(None),
         industries: Optional[List[str]] = Query(None),
         fund_types: Optional[List[str]] = Query(None),
         stages: Optional[List[str]] = Query(None),
+        assets_under_management: Optional[str] = Query(None),
+        minimum_investment: Optional[str] = Query(None),
+        maximum_investment: Optional[str] = Query(None),
         db: Session = Depends(get_db)
 ):
     """Search investment funds using query parameters"""
@@ -115,7 +146,8 @@ async def search_funds_get(
             query = query.filter(models.InvestmentFund.firm_state.in_(states))
         if countries:
             query = query.filter(models.InvestmentFund.firm_country.in_(countries))
-
+        if location_preferences:
+            query = query.filter(models.InvestmentFund.geographic_preferences.overlap([location_preferences]))
         if industries:
             query = query.filter(models.InvestmentFund.industry_preferences.overlap(industries))
 
@@ -124,7 +156,15 @@ async def search_funds_get(
 
         if stages:
             query = query.filter(models.InvestmentFund.stage_preferences.overlap(stages))
-
+        if assets_under_management:
+            lower, upper = string_to_float(assets_under_management)
+            query = query.filter(models.InvestmentFund.capital_managed.between(lower, upper))
+        if minimum_investment:
+            lower, upper = string_to_float(minimum_investment)
+            query = query.filter(models.InvestmentFund.min_investment.between(lower, upper))
+        if maximum_investment:
+            lower, upper = string_to_float(maximum_investment)
+            query = query.filter(models.InvestmentFund.max_investment.between(lower, upper))
         total = query.count()
         skip = (page - 1) * per_page
         results = query.offset(skip).limit(per_page).all()
