@@ -104,6 +104,14 @@ def string_to_float(value: str):
         return 250000, 1000000
     if value == "$0 - $250K":
         return 0, 250000
+    if value == "1 - 10":
+        return 1, 9.99
+    if value == "10 - 20":
+        return 10, 19.99
+    if value == "20 - 30":
+        return 20, 29.99
+    if value == "30 - 40":
+        return 30, 40
 
 
 @router.get("/search")
@@ -124,6 +132,8 @@ async def search_funds_get(
         assets_under_management: Optional[str] = Query(None),
         minimum_investment: Optional[str] = Query(None),
         maximum_investment: Optional[str] = Query(None),
+        number_of_investors: Optional[str] = Query(None),
+        gender_ratio: Optional[str] = Query(None),
         db: Session = Depends(get_db)
 ):
     """Search investment funds using query parameters"""
@@ -165,6 +175,9 @@ async def search_funds_get(
         if maximum_investment:
             lower, upper = string_to_float(maximum_investment)
             query = query.filter(models.InvestmentFund.max_investment.between(lower, upper))
+        if number_of_investors:
+            lower, upper = string_to_float(number_of_investors)
+            query = query.filter(models.InvestmentFund.number_of_investors.between(lower, upper))
         total = query.count()
         skip = (page - 1) * per_page
         results = query.offset(skip).limit(per_page).all()
@@ -217,72 +230,3 @@ def delete_fund(fund_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-def apply_fund_filters(query, filters):
-    """Apply filters to investment fund query"""
-    if not filters:
-        return query
-
-    if filters.searchTerm:
-        search = f"%{filters.searchTerm}%"
-        query = query.filter(models.InvestmentFund.firm_name.ilike(search) |
-                             models.InvestmentFund.contact_email.ilike(search) |
-                             models.InvestmentFund.firm_email.ilike(search) |
-                             models.InvestmentFund.description.ilike(search))
-
-    if filters.contactInfo:
-        if filters.contactInfo.hasEmail is not None:
-            if filters.contactInfo.hasEmail:
-                query = query.filter(
-                    (models.InvestmentFund.contact_email.isnot(None)) |
-                    (models.InvestmentFund.firm_email.isnot(None))
-                )
-            else:
-                query = query.filter(
-                    (models.InvestmentFund.contact_email.is_(None)) &
-                    (models.InvestmentFund.firm_email.is_(None))
-                )
-
-        if filters.contactInfo.hasPhone is not None:
-            if filters.contactInfo.hasPhone:
-                query = query.filter(
-                    (models.InvestmentFund.contact_phone.isnot(None)) |
-                    (models.InvestmentFund.firm_phone.isnot(None))
-                )
-            else:
-                query = query.filter(
-                    (models.InvestmentFund.contact_phone.is_(None)) &
-                    (models.InvestmentFund.firm_phone.is_(None))
-                )
-
-        if filters.contactInfo.hasAddress is not None:
-            if filters.contactInfo.hasAddress:
-                query = query.filter(models.InvestmentFund.firm_address.isnot(None))
-            else:
-                query = query.filter(models.InvestmentFund.firm_address.is_(None))
-
-    if filters.location:
-        if filters.location.city:
-            query = query.filter(models.InvestmentFund.firm_city.in_(filters.location.city))
-        if filters.location.state:
-            query = query.filter(models.InvestmentFund.firm_state.in_(filters.location.state))
-        if filters.location.country:
-            query = query.filter(models.InvestmentFund.firm_country.in_(filters.location.country))
-        if filters.location.location_preferences:
-            query = query.filter(models.InvestmentFund.geographic_preferences.overlap(
-                filters.location.location_preferences
-            ))
-
-    if filters.industry and filters.industry.industries:
-        query = query.filter(models.InvestmentFund.industry_preferences.overlap(
-            filters.industry.industries
-        ))
-
-    if filters.stages and filters.stages.stages:
-        query = query.filter(models.InvestmentFund.stage_preferences.overlap(
-            filters.stages.stages
-        ))
-
-    if filters.fundType and filters.fundType.types:
-        query = query.filter(models.InvestmentFund.firm_type.in_(filters.fundType.types))
-
-    return query
