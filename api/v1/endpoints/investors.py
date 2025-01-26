@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import Optional, List, Union
 import models
 import schemas
@@ -51,24 +52,37 @@ def normalize_enum_value(value: str) -> str:
     return value.title().replace('_', ' ')
 
 
+def string_to_float(value: str):
+    if value == "$1B+":
+        return (1000000000, float('inf'))
+    if value == "$100M - $500M":
+        return (100000000, 500000000)
+    if value == "$500M - $1B":
+        return (500000000, 1000000000)
+    if value == "$25M - $100M":
+        return (25000000, 100000000)
+    if value == "$0 - $25M":
+        return (0, 25000000)
+
+
 def apply_contact_filters(query, email=None, phone=None, address=None):
     if email:
-        if email == "has_email":
-            query = query.filter(models.Investor.email.isnot(None))
-        elif email == "no_email":
-            query = query.filter(models.Investor.email.is_(None))
+        if email.lower() == "has_email":
+            query = query.filter(models.Investor.email.isnot(None), models.Investor.email != '')
+        elif email.lower() == "no_email":
+            query = query.filter(or_(models.Investor.email.is_(None), models.Investor.email == 'NaN'))
 
     if phone:
-        if phone == "has_phone":
-            query = query.filter(models.Investor.phone.isnot(None))
-        elif phone == "no_phone":
-            query = query.filter(models.Investor.phone.is_(None))
+        if phone.lower() == "has_phone":
+            query = query.filter(models.Investor.phone.isnot(None), models.Investor.phone != '')
+        elif phone.lower() == "no_phone":
+            query = query.filter(or_(models.Investor.phone.is_(None), models.Investor.phone == 'NaN'))
 
     if address:
-        if address == "has_address":
-            query = query.filter(models.Investor.address.isnot(None))
-        elif address == "no_address":
-            query = query.filter(models.Investor.address.is_(None))
+        if address.lower() == "has_address":
+            query = query.filter(models.Investor.address.isnot(None), models.Investor.address != '')
+        elif address.lower() == "no_address":
+            query = query.filter(or_(models.Investor.address.is_(None), models.Investor.address == 'NaN'))
 
     return query
 
@@ -78,15 +92,16 @@ async def search_investors_get(
         search_term: Optional[str] = None,
         page: int = Query(1, gt=0),
         per_page: int = Query(50, gt=1, le=100),
-        email: Optional[str] = Query(None, enum=["has_email", "no_email"]),
-        phone: Optional[str] = Query(None, enum=["has_phone", "no_phone"]),
-        address: Optional[str] = Query(None, enum=["has_address", "no_address"]),
+        email: Optional[str] = Query(None),
+        phone: Optional[str] = Query(None),
+        address: Optional[str] = Query(None),
         cities: Optional[str] = Query(None),
         states: Optional[str] = Query(None),
         countries: Optional[str] = Query(None),
         industries: Optional[Union[str, List[str]]] = Query(None),
         fund_types: Optional[str] = Query(None),
         stages: Optional[str] = Query(None),
+        assets_under_management: Optional[str] = Query(None),
         gender: Optional[str] = Query(None),
         db: Session = Depends(get_db)
 ):
@@ -98,8 +113,7 @@ async def search_investors_get(
             query = query.filter(
                 models.Investor.first_name.ilike(search) |
                 models.Investor.last_name.ilike(search) |
-                models.Investor.firm_name.ilike(search) |
-                models.Investor.email.ilike(search)
+                models.Investor.firm_name.ilike(search)
             )
 
         query = apply_contact_filters(query, email, phone, address)
@@ -122,9 +136,13 @@ async def search_investors_get(
         if fund_types:
             fund_type_list = fund_types.split(',') if ',' in fund_types else [fund_types]
             normalized_fund_types = [normalize_enum_value(ft) for ft in fund_type_list]
-            query = query.filter(models.Investor.type_of_financing.overlap(normalized_fund_types))
+            query = query.filter(models.Investor.type_of_firm.in_(normalized_fund_types))
         if stages:
             query = query.filter(models.Investor.stage_preferences.overlap([stages]))
+
+        if assets_under_management:
+            lower, upper = string_to_float(assets_under_management)
+            query = query.filter(models.Investor.capital_managed.between(lower, upper))
 
         if gender:
             normalized_gender = normalize_enum_value(gender)

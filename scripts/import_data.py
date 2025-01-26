@@ -1,20 +1,21 @@
-import pandas as pd
-from sqlalchemy.orm import Session
-from sqlalchemy.dialects.postgresql import insert
-from database import engine
-from models import Base, Investor, InvestmentFund
-from typing import Type, Union
 import logging
 import os
+import sys
 import traceback
+from typing import Type, Union
 
-# Get the absolute path of the project root directory
+import pandas as pd
+import sqlalchemy
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import Session
+
+from database import engine
+from models import Base, Investor, InvestmentFund
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Create tables
 Base.metadata.create_all(bind=engine)
 
-# Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -79,54 +80,54 @@ def get_column_mappings(model):
         }
 
 
+def convert_currency(value):
+    if pd.isna(value) or value is None or value == '':
+        return None
+    try:
+        if isinstance(value, (int, float)):
+            return float(value) if value > 0 else None
+        if isinstance(value, str):
+            value = value.replace('$', '').replace(',', '').replace(' ', '')
+            if '-' in value:
+                parts = value.split('-')
+                values = [float(p) for p in parts if p.strip()]
+                return sum(values) / len(values) if values else None
+            return float(value) if float(value) > 0 else None
+        return None
+    except Exception as e:
+        logger.error(f"Error converting currency value '{value}': {str(e)}")
+        return None
+
+
+def clean_list_field(value):
+    if pd.isna(value) or value in ('', '[""]'):
+        return None
+    try:
+        if isinstance(value, str):
+            value = value.strip('[]').replace('"', '').replace("'", '')
+            items = [item.strip() for item in value.split(',')]
+            items = list(set(item for item in items if item))
+            return items if items else None
+        elif isinstance(value, list):
+            items = [str(item).strip() for item in value if item]
+            return list(set(items)) if items else None
+        return None
+    except Exception as e:
+        logger.error(f"List cleaning error for {value}: {str(e)}")
+        return None
+
+
 def clean_and_convert_data(df: pd.DataFrame, model: Type[Union[Investor, InvestmentFund]]) -> pd.DataFrame:
-    def convert_currency(value):
-        if pd.isna(value) or value is None or value == '' or value == 0:
-            return None
-        try:
-            if isinstance(value, (int, float)):
-                return float(value)
-            if isinstance(value, str):
-                value = value.replace('$', '').replace(',', '').replace(' ', '')
-                if '-' in value:
-                    parts = value.split('-')
-                    values = [float(p) for p in parts if p.strip()]
-                    return sum(values) / len(values)
-                return float(value)
-            return None
-        except:
-            return None
-
-    def clean_list_field(value):
-        if pd.isna(value) or value is None or value == '' or value == '[""]':
-            return None
-        try:
-            if isinstance(value, str):
-                value = value.strip('[]').replace('"', '').replace("'", '')
-                items = [item.strip() for item in value.split(',')]
-                items = list(set(item for item in items if item))
-                return items if items else None
-            elif isinstance(value, list):
-                items = [str(item).strip() for item in value if item]
-                return list(set(items)) if items else None
-            return None
-        except:
-            return None
-
-    # Replace empty values
     df = df.replace({
         'Unknown': None, '': None, 'N/A': None, 'nan': None,
-        'NULL': None, 'None': None, '["]': None, '[]': None,
-        0: None
+        'NULL': None, 'None': None, '["]': None, '[]': None
     })
 
-    # Convert numeric fields
     numeric_cols = ['min_investment', 'max_investment', 'capital_managed']
     for col in numeric_cols:
         if col in df.columns:
             df[col] = df[col].apply(convert_currency)
 
-    # Convert list fields
     list_fields = ['industry_preferences', 'geographic_preferences', 'stage_preferences']
     if model == Investor:
         list_fields.append('type_of_financing')
@@ -143,9 +144,17 @@ def clean_and_convert_data(df: pd.DataFrame, model: Type[Union[Investor, Investm
 def import_data(csv_file: str, model: Type[Union[Investor, InvestmentFund]], session: Session):
     logger.info(f"\nProcessing {model.__name__} data from {csv_file}")
 
-    df = pd.read_csv(csv_file)
-    df = df.rename(columns=get_column_mappings(model))
-    df_cleaned = clean_and_convert_data(df, model)
+    try:
+        df = pd.read_csv(csv_file)
+        logger.info(f"Successfully read CSV with {len(df)} rows")
+
+        df = df.rename(columns=get_column_mappings(model))
+        df_cleaned = clean_and_convert_data(df, model)
+        logger.info("Data cleaning completed")
+
+    except Exception as e:
+        logger.error(f"Error processing CSV file {csv_file}: {str(e)}")
+        raise
 
     chunk_size = 1000
     records_processed = 0
@@ -159,21 +168,10 @@ def import_data(csv_file: str, model: Type[Union[Investor, InvestmentFund]], ses
                 record = {k: v for k, v in row.items()
                           if v is not None and k in model.__table__.columns.keys()}
 
-                id_field = 'email' if model == Investor else 'firm_email'
-
-                if record.get(id_field):
-                    stmt = insert(model).values(**record)
-                    stmt = stmt.on_conflict_do_update(
-                        index_elements=[id_field],
-                        set_=record
-                    )
-
-                    session.execute(stmt)
-                    session.commit()
-                    records_processed += 1
-                else:
-                    errors += 1
-                    logger.warning(f"Skipping record - missing {id_field}")
+                stmt = insert(model).values(**record)
+                session.execute(stmt)
+                session.commit()
+                records_processed += 1
 
             except Exception as e:
                 errors += 1
@@ -200,7 +198,6 @@ def verify_import(session: Session, model: Type[Union[Investor, InvestmentFund]]
         count = session.query(model).filter(getattr(model, col).isnot(None)).count()
         logger.info(f"Non-null {col}: {count}")
 
-        # Sample values
         samples = session.query(model).filter(
             getattr(model, col).isnot(None)
         ).limit(5).all()
@@ -215,29 +212,41 @@ def main():
         logger.info(f"BASE_DIR: {BASE_DIR}")
 
         with Session(engine) as session:
-            # Import Investors
-            investors_csv = f"{BASE_DIR}/data/investors_cleaned.csv"
-            logger.info(f"Looking for investors CSV at: {investors_csv}")
-            if os.path.exists(investors_csv):
-                logger.info("Found investors CSV file")
-                total_investors = import_data(investors_csv, Investor, session)
-                verify_import(session, Investor)
-            else:
-                logger.error(f"Investors CSV not found at {investors_csv}")
+            try:
+                investors_csv = f"{BASE_DIR}/data/investors_cleaned.csv"
+                if os.path.exists(investors_csv):
+                    logger.info("Found investors CSV file")
+                    total_investors = import_data(investors_csv, Investor, session)
+                    print(total_investors)
+                    verify_import(session, Investor)
+                else:
+                    logger.error(f"Investors CSV not found at {investors_csv}")
 
-            # Import Investment Funds
-            funds_csv = f"{BASE_DIR}/data/vc_funds.csv"
-            logger.info(f"Looking for funds CSV at: {funds_csv}")
-            if os.path.exists(funds_csv):
-                logger.info("Found funds CSV file")
-                total_funds = import_data(funds_csv, InvestmentFund, session)
-                verify_import(session, InvestmentFund)
-            else:
-                logger.error(f"Funds CSV not found at {funds_csv}")
+                funds_csv = f"{BASE_DIR}/data/vc_funds.csv"
+                if os.path.exists(funds_csv):
+                    logger.info("Found funds CSV file")
+                    total_funds = import_data(funds_csv, InvestmentFund, session)
+                    print(total_funds)
+                    verify_import(session, InvestmentFund)
+                else:
+                    logger.error(f"Funds CSV not found at {funds_csv}")
+
+            except Exception as e:
+                logger.error(f"Database session error: {str(e)}")
+                raise
 
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}")
-        traceback.print_exc()
+        logger.error("Full traceback:")
+        logger.error(traceback.format_exc())
+        logger.error(f"Exception type: {type(e).__name__}")
+        logger.error(f"Exception args: {e.args}")
+        logger.error(f"Python version: {sys.version}")
+        logger.error(f"Platform: {sys.platform}")
+        logger.error(f"Working directory: {os.getcwd()}")
+        logger.error(f"pandas version: {pd.__version__}")
+        logger.error(f"sqlalchemy version: {sqlalchemy.__version__}")
+        raise
 
 
 if __name__ == "__main__":
