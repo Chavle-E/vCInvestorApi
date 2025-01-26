@@ -7,7 +7,24 @@ logger = logging.getLogger(__name__)
 
 
 # Investment Fund Filter Values
-@router.get('/investors/phone')
+@router.get('/investment-funds/email')
+def return_email():
+    return {
+        "email": [
+            {
+                "label": "Has Email",
+                "value": "has_email"
+            },
+            {
+                "label": "No Email",
+                "value": "no_email"
+            }
+        ]
+
+    }
+
+
+@router.get('/investment-funds/phone')
 def return_phone():
     return {
         "phone": [
@@ -18,6 +35,23 @@ def return_phone():
             {
                 "label": "No Phone",
                 "value": "no_phone"
+            }
+        ]
+
+    }
+
+
+@router.get('/investment-funds/address')
+def return_address():
+    return {
+        "address": [
+            {
+                "label": "Has Address",
+                "value": "has_address"
+            },
+            {
+                "label": "No Address",
+                "value": "no_address"
             }
         ]
 

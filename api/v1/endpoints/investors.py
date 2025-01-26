@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
+from typing import Optional, List, Union
 import models
 import schemas
 from database import get_db
 import crud
 import logging
-from typing import Optional, List
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -26,111 +27,127 @@ def read_investors(
         per_page: int = Query(50, gt=0, le=100, description="Number of items per page"),
 ):
     try:
-        # Get Total Count
         total = db.query(models.Investor).count()
-
-        # Calculate Offset
         skip = (page - 1) * per_page
-
-        # Get paginated results
         investors = crud.investor.get_multi(
             db=db,
             skip=skip,
             limit=per_page,
         )
-
         return {
             "total": total,
             "page": page,
             "per_page": per_page,
             "total_pages": -(-total // per_page),
-            "data": investors,
+            "results": investors,
         }
     except Exception as e:
         logger.error(f"Error fetching investors: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def normalize_enum_value(value: str) -> str:
+    if not value:
+        return value
+    return value.title().replace('_', ' ')
+
+
+def string_to_float(value: str):
+    if value == "$1B+":
+        return (1000000000, float('inf'))
+    if value == "$100M - $500M":
+        return (100000000, 500000000)
+    if value == "$500M - $1B":
+        return (500000000, 1000000000)
+    if value == "$25M - $100M":
+        return (25000000, 100000000)
+    if value == "$0 - $25M":
+        return (0, 25000000)
+
+
+def apply_contact_filters(query, email=None, phone=None, address=None):
+    if email:
+        if email.lower() == "has_email":
+            query = query.filter(models.Investor.email.isnot(None), models.Investor.email != '')
+        elif email.lower() == "no_email":
+            query = query.filter(or_(models.Investor.email.is_(None), models.Investor.email == 'NaN'))
+
+    if phone:
+        if phone.lower() == "has_phone":
+            query = query.filter(models.Investor.phone.isnot(None), models.Investor.phone != '')
+        elif phone.lower() == "no_phone":
+            query = query.filter(or_(models.Investor.phone.is_(None), models.Investor.phone == 'NaN'))
+
+    if address:
+        if address.lower() == "has_address":
+            query = query.filter(models.Investor.address.isnot(None), models.Investor.address != '')
+        elif address.lower() == "no_address":
+            query = query.filter(or_(models.Investor.address.is_(None), models.Investor.address == 'NaN'))
+
+    return query
+
+
 @router.get("/search")
 async def search_investors_get(
-        # Search and pagination
         search_term: Optional[str] = None,
         page: int = Query(1, gt=0),
         per_page: int = Query(50, gt=1, le=100),
-
-        # Location filters
-        cities: Optional[List[str]] = Query(None),
-        states: Optional[List[str]] = Query(None),
-        countries: Optional[List[str]] = Query(None),
-        location_preferences: Optional[List[str]] = Query(None),
-
-        # Contact info filters
-        has_email: Optional[bool] = Query(None),
-        has_phone: Optional[bool] = Query(None),
-        has_address: Optional[bool] = Query(None),
-
-        # Industry filters
-        industries: Optional[List[str]] = Query(None),
-
-        # Fund type filters
-        fund_types: Optional[List[str]] = Query(None),
-
-        # Stage filters
-        stages: Optional[List[str]] = Query(None),
-
-        # Investment range filters
+        email: Optional[str] = Query(None),
+        phone: Optional[str] = Query(None),
+        address: Optional[str] = Query(None),
+        cities: Optional[str] = Query(None),
+        states: Optional[str] = Query(None),
+        countries: Optional[str] = Query(None),
+        industries: Optional[Union[str, List[str]]] = Query(None),
+        fund_types: Optional[str] = Query(None),
+        stages: Optional[str] = Query(None),
         assets_under_management: Optional[str] = Query(None),
-        min_investment: Optional[str] = Query(None),
-        max_investment: Optional[str] = Query(None),
-
-        # Gender filter
         gender: Optional[str] = Query(None),
-
         db: Session = Depends(get_db)
 ):
-    """
-    Search investors using query parameters instead of POST body
-    """
-    # Construct filter object from query parameters
-    filters = schemas.InvestorFilterParams(
-        searchTerm=search_term,
-        location=schemas.LocationFilter(
-            city=cities,
-            state=states,
-            country=countries,
-            location_preferences=location_preferences
-        ) if any([cities, states, countries, location_preferences]) else None,
-        contactInfo=schemas.ContactInfoFilter(
-            hasEmail=has_email,
-            hasPhone=has_phone,
-            hasAddress=has_address
-        ) if any([has_email, has_phone, has_address]) else None,
-        industry=schemas.IndustryFilter(
-            industries=industries
-        ) if industries else None,
-        fundType=schemas.FundTypeFilter(
-            types=fund_types
-        ) if fund_types else None,
-        stages=schemas.StagePreferencesFilter(
-            stages=stages
-        ) if stages else None,
-        investmentRanges=schemas.InvestmentRangesFilter(
-            assetsUnderManagement=assets_under_management,
-            minInvestment=min_investment,
-            maxInvestment=max_investment
-        ) if any([assets_under_management, min_investment, max_investment]) else None,
-        gender=schemas.GenderFilter(
-            gender=gender
-        ) if gender else None
-    )
-
     try:
         query = db.query(models.Investor)
 
-        # Apply filters using existing function
-        query = apply_investor_filters(query, filters)
+        if search_term:
+            search = f"%{search_term}%"
+            query = query.filter(
+                models.Investor.first_name.ilike(search) |
+                models.Investor.last_name.ilike(search) |
+                models.Investor.firm_name.ilike(search)
+            )
 
-        # Calculate pagination
+        query = apply_contact_filters(query, email, phone, address)
+
+        if cities:
+            normalized_city = normalize_enum_value(cities)
+            query = query.filter(models.Investor.city == normalized_city)
+
+        if states:
+            normalized_state = normalize_enum_value(states)
+            query = query.filter(models.Investor.state == normalized_state)
+
+        if countries:
+            normalized_country = normalize_enum_value(countries)
+            query = query.filter(models.Investor.country == normalized_country)
+
+        if industries:
+            query = query.filter(models.Investor.industry_preferences.overlap([industries]))
+
+        if fund_types:
+            fund_type_list = fund_types.split(',') if ',' in fund_types else [fund_types]
+            normalized_fund_types = [normalize_enum_value(ft) for ft in fund_type_list]
+            query = query.filter(models.Investor.type_of_firm.in_(normalized_fund_types))
+        if stages:
+            query = query.filter(models.Investor.stage_preferences.overlap([stages]))
+
+        if assets_under_management:
+            lower, upper = string_to_float(assets_under_management)
+            query = query.filter(models.Investor.capital_managed.between(lower, upper))
+
+        if gender:
+            normalized_gender = normalize_enum_value(gender)
+            query = query.filter(models.Investor.gender == normalized_gender)
+
         total = query.count()
         skip = (page - 1) * per_page
         results = query.offset(skip).limit(per_page).all()
@@ -148,7 +165,7 @@ async def search_investors_get(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{investor_id}", response_model=None)  # Remove response model
+@router.get("/{investor_id}", response_model=None)
 def read_investor(investor_id: int, db: Session = Depends(get_db)):
     try:
         db_investor = crud.investor.get(db, id=investor_id)
@@ -195,6 +212,25 @@ def apply_investor_filters(query, filters):
                              models.Investor.firm_name.ilike(search) |
                              models.Investor.email.ilike(search) |
                              models.Investor.contact_title.ilike(search))
+
+    if filters.contactInfo:
+        if filters.contactInfo.hasEmail is not None:
+            if filters.contactInfo.hasEmail:
+                query = query.filter(models.Investor.email.isnot(None))
+            else:
+                query = query.filter(models.Investor.email.is_(None))
+
+        if filters.contactInfo.hasPhone is not None:
+            if filters.contactInfo.hasPhone:
+                query = query.filter(models.Investor.phone.isnot(None))
+            else:
+                query = query.filter(models.Investor.phone.is_(None))
+
+        if filters.contactInfo.hasAddress is not None:
+            if filters.contactInfo.hasAddress:
+                query = query.filter(models.Investor.address.isnot(None))
+            else:
+                query = query.filter(models.Investor.address.is_(None))
 
     if filters.location:
         if filters.location.city:

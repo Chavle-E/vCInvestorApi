@@ -1,8 +1,7 @@
-from sqlalchemy import Float, Text
+from sqlalchemy import Float, Text, Column, Integer, String, ForeignKey, Table, DateTime
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
-from database import Base
-from sqlalchemy import Column, Integer, String, ForeignKey, Table, DateTime
 from sqlalchemy.orm import relationship
+from database import Base
 from datetime import datetime, UTC
 
 # Association tables for many-to-many relationships
@@ -45,14 +44,16 @@ class Investor(Base):
     last_name = Column(String)
     gender = Column(String, nullable=True)
     contact_title = Column(String, nullable=True)
-    email = Column(String, unique=True, index=True)
+    email = Column(String, index=True)
     phone = Column(String, nullable=True)
+    address = Column(String, nullable=True)
     office_website = Column(String, nullable=True)
     firm_name = Column(String, nullable=True)
     city = Column(String, nullable=True)
     state = Column(String, nullable=True)
     country = Column(String, nullable=True)
-    type_of_financing = Column(String, nullable=True)
+    type_of_firm = Column(String, nullable=True)
+    type_of_financing = Column(PG_ARRAY(String), nullable=True)
     industry_preferences = Column(PG_ARRAY(String), nullable=True)
     geographic_preferences = Column(PG_ARRAY(String), nullable=True)
     stage_preferences = Column(PG_ARRAY(String), nullable=True)
@@ -70,7 +71,7 @@ class InvestmentFund(Base):
     contact_email = Column(String, index=True)
     contact_phone = Column(String, nullable=True)
     firm_name = Column(String)
-    firm_email = Column(String, unique=True, index=True, nullable=True)
+    firm_email = Column(String, index=True, nullable=True)
     firm_phone = Column(String, nullable=True)
     firm_website = Column(String, nullable=True)
     firm_address = Column(String, nullable=True)
@@ -79,7 +80,7 @@ class InvestmentFund(Base):
     firm_zip = Column(String, nullable=True)
     firm_country = Column(String, nullable=True)
     office_type = Column(String, nullable=True)
-    financing_type = Column(String, nullable=True)
+    financing_type = Column(PG_ARRAY(String), nullable=True)
     industry_preferences = Column(PG_ARRAY(String), nullable=True)
     geographic_preferences = Column(PG_ARRAY(String), nullable=True)
     stage_preferences = Column(PG_ARRAY(String), nullable=True)
