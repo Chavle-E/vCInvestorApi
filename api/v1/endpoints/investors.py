@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 from typing import Optional, List, Union
 import models
 import schemas
@@ -49,7 +49,9 @@ def read_investors(
 def normalize_enum_value(value: str) -> str:
     if not value:
         return value
-    return value.title().replace('_', ' ')
+    if isinstance(value, str):
+        return value.title().replace('_', ' ')
+    return value
 
 
 def string_to_float(value: str):
@@ -121,18 +123,18 @@ async def search_investors_get(
         email: Optional[str] = Query(None),
         phone: Optional[str] = Query(None),
         address: Optional[str] = Query(None),
-        cities: Optional[str] = Query(None),
-        states: Optional[str] = Query(None),
-        countries: Optional[str] = Query(None),
-        industries: Optional[Union[str, List[str]]] = Query(None),
-        geographic_preferences: Optional[Union[str, List[str]]] = Query(None),
-        fund_types: Optional[str] = Query(None),
-        stages: Optional[str] = Query(None),
-        assets_under_management: Optional[str] = Query(None),
-        minimum_investment: Optional[str] = Query(None),
-        maximum_investment: Optional[str] = Query(None),
-        title: Optional[str] = Query(None),
-        number_of_investors: Optional[str] = Query(None),
+        cities: Optional[List[str]] = Query(None),
+        states: Optional[List[str]] = Query(None),
+        countries: Optional[List[str]] = Query(None),
+        industries: Optional[List[str]] = Query(None),
+        geographic_preferences: Optional[List[str]] = Query(None),
+        fund_types: Optional[List[str]] = Query(None),
+        stages: Optional[List[str]] = Query(None),
+        assets_under_management: Optional[List[str]] = Query(None),
+        minimum_investment: Optional[List[str]] = Query(None),
+        maximum_investment: Optional[List[str]] = Query(None),
+        title: Optional[List[str]] = Query(None),
+        number_of_investors: Optional[List[str]] = Query(None),
         gender: Optional[str] = Query(None),
         db: Session = Depends(get_db)
 ):
@@ -150,46 +152,70 @@ async def search_investors_get(
         query = apply_contact_filters(query, email, phone, address)
 
         if cities:
-            normalized_city = normalize_enum_value(cities)
-            query = query.filter(models.Investor.city == normalized_city)
-
+            query = query.filter(models.Investor.city.in_(cities))
+        if gender:
+            query = query.filter(models.Investor.gender == gender)
         if states:
-            normalized_state = normalize_enum_value(states)
-            query = query.filter(models.Investor.state == normalized_state)
+            query = query.filter(models.Investor.state.in_(states))
 
         if countries:
-            normalized_country = normalize_enum_value(countries)
-            query = query.filter(models.Investor.country == normalized_country)
+            query = query.filter(models.Investor.country.in_(countries))
 
         if industries:
-            query = query.filter(models.Investor.industry_preferences.overlap([industries]))
+            query = query.filter(models.Investor.industry_preferences.overlap(industries))
 
         if fund_types:
-            fund_type_list = fund_types.split(',') if ',' in fund_types else [fund_types]
-            normalized_fund_types = [normalize_enum_value(ft) for ft in fund_type_list]
-            query = query.filter(models.Investor.type_of_firm.in_(normalized_fund_types))
+            query = query.filter(models.Investor.type_of_firm.in_(fund_types))
+
         if stages:
-            query = query.filter(models.Investor.stage_preferences.overlap([stages]))
+            query = query.filter(models.Investor.stage_preferences.overlap(stages))
+
         if geographic_preferences:
-            query = query.filter(models.Investor.geographic_preferences.overlap([geographic_preferences]))
+            query = query.filter(models.Investor.geographic_preferences.overlap(geographic_preferences))
+
         if assets_under_management:
-            lower, upper = string_to_float(assets_under_management)
-            query = query.filter(models.Investor.capital_managed.between(lower, upper))
+            conditions = []
+            for range_value in assets_under_management:
+                lower, upper = string_to_float(range_value)
+                conditions.append(models.Investor.capital_managed.between(lower, upper))
+            if conditions:
+                query = query.filter(or_(*conditions))
+
         if minimum_investment:
-            lower, upper = string_to_float(minimum_investment)
-            query = query.filter(models.Investor.min_investment.between(lower, upper))
+            conditions = []
+            for range_value in minimum_investment:
+                lower, upper = string_to_float(range_value)
+                conditions.append(models.Investor.min_investment.between(lower, upper))
+            if conditions:
+                query = query.filter(or_(*conditions))
+
         if maximum_investment:
-            lower, upper = string_to_float(maximum_investment)
-            query = query.filter(models.Investor.max_investment.between(lower, upper))
+            conditions = []
+            for range_value in maximum_investment:
+                lower, upper = string_to_float(range_value)
+                conditions.append(models.Investor.max_investment.between(lower, upper))
+            if conditions:
+                query = query.filter(or_(*conditions))
+
         if title:
-            normalized_title = normalize_enum_value(title)
-            query = query.filter(models.Investor.contact_title == normalized_title)
+            query = query.filter(models.Investor.contact_title.in_(title if isinstance(title, list) else [title]))
+
         if number_of_investors:
-            lower, upper = string_to_float(number_of_investors)
-            query = query.filter(models.Investor.number_of_investors.between(lower, upper))
-        if gender:
-            normalized_gender = normalize_enum_value(gender)
-            query = query.filter(models.Investor.gender == normalized_gender)
+            conditions = []
+            for range_value in number_of_investors:
+                try:
+                    lower, upper = string_to_float(range_value)
+                    conditions.append(
+                        and_(
+                            models.Investor.number_of_investors >= lower,
+                            models.Investor.number_of_investors <= upper
+                        )
+                    )
+                except Exception as e:
+                    logger.error(f"Error parsing number_of_investors range: {e}")
+                    continue
+            if conditions:
+                query = query.filter(or_(*conditions))
 
         total = query.count()
         skip = (page - 1) * per_page
@@ -241,5 +267,3 @@ def delete_investor(investor_id: int, db: Session = Depends(get_db)):
         return db_investor
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-

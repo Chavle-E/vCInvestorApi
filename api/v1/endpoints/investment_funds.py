@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, and_
 from typing import Optional, List
 import models
 import schemas
@@ -45,73 +46,61 @@ def read_funds(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def apply_fund_contact_filters(query, email=None, phone=None, address=None):
+def apply_contact_filters(query, email=None, phone=None, address=None):
     if email:
-        if email == "has_email":
-            query = query.filter(
-                (models.InvestmentFund.firm_email != 'NaN')
-            )
-        elif email == "no_email":
-            query = query.filter(
-                (models.InvestmentFund.firm_email == 'NaN')
-            )
+        if email.lower() == "has_email":
+            query = query.filter(models.Investor.email.isnot(None), models.Investor.email != 'NaN')
+        elif email.lower() == "no_email":
+            query = query.filter(or_(models.Investor.email.is_(None), models.Investor.email == 'NaN'))
 
     if phone:
-        if phone == "has_phone":
-            query = query.filter(
-                (models.InvestmentFund.firm_phone != 'NaN')
-            )
-        elif phone == "no_phone":
-            query = query.filter(
-                (models.InvestmentFund.firm_phone == 'NaN')
-            )
+        if phone.lower() == "has_phone":
+            query = query.filter(models.Investor.phone.isnot(None), models.Investor.phone != 'NaN')
+        elif phone.lower() == "no_phone":
+            query = query.filter(or_(models.Investor.phone.is_(None), models.Investor.phone == 'NaN'))
 
     if address:
-        if address == "has_address":
-            query = query.filter(models.InvestmentFund.firm_address != 'NaN')
-        elif address == "no_address":
-            query = query.filter(models.InvestmentFund.firm_address == 'NaN')
+        if address.lower() == "has_address":
+            query = query.filter(models.Investor.address.isnot(None), models.Investor.address != 'NaN')
+        elif address.lower() == "no_address":
+            query = query.filter(or_(models.Investor.address.is_(None), models.Investor.address == 'NaN'))
 
     return query
 
 
-def string_to_float(value: str):
-    if value == "$1B+":
-        return 1000000000, float('inf')
-    if value == "$100M - $500M":
-        return 100000000, 500000000
-    if value == "$500M - $1B":
-        return 500000000, 1000000000
-    if value == "$25M - $100M":
-        return 25000000, 100000000
-    if value == "$0 - $25M":
-        return 1, 25000000
-    if value == "$10M - $25M":
-        return 10000000, 25000000
-    if value == "$100M+":
-        return 100000000, float('inf')
-    if value == "$1M - $10M":
-        return 1000000, 10000000
-    if value == "$0 - $1M":
-        return 1, 1000000
-    if value == "$5M - $20M":
-        return 5000000, 20000000
-    if value == "$20M+":
-        return 20000000, float('inf')
-    if value == "$1M - $5M":
-        return 1000000, 5000000
-    if value == "$250K - $1M":
-        return 250000, 1000000
-    if value == "$0 - $250K":
-        return 0, 250000
-    if value == "1 - 10":
-        return 1, 9.99
-    if value == "10 - 20":
-        return 10, 19.99
-    if value == "20 - 30":
-        return 20, 29.99
-    if value == "30 - 40":
-        return 30, 40
+def string_to_float(value: str) -> tuple[float, float]:
+    if not value:
+        return 0, float('inf')
+
+    ranges = {
+
+        "$1B+": (1_000_000_000, float('inf')),
+
+
+        "$100M - $500M": (100_000_000, 500_000_000),
+        "$500M - $1B": (500_000_000, 1_000_000_000),
+        "$25M - $100M": (25_000_000, 100_000_000),
+        "$0 - $25M": (1, 25_000_000),
+        "$10M - $25M": (10_000_000, 25_000_000),
+        "$100M+": (100_000_000, float('inf')),
+        "$1M - $10M": (1_000_000, 10_000_000),
+        "$0 - $1M": (1, 1_000_000),
+        "$5M - $20M": (5_000_000, 20_000_000),
+        "$20M+": (20_000_000, float('inf')),
+        "$1M - $5M": (1_000_000, 5_000_000),
+
+
+        "$250K - $1M": (250_000, 1_000_000),
+        "$0 - $250K": (0, 250_000),
+
+
+        "1 - 10": (1, 9.99),
+        "10 - 20": (10, 19.99),
+        "20 - 30": (20, 29.99),
+        "30 - 40": (30, 40)
+    }
+
+    return ranges.get(value, (0, float('inf')))
 
 
 @router.get("/search")
@@ -129,11 +118,11 @@ async def search_funds_get(
         industries: Optional[List[str]] = Query(None),
         fund_types: Optional[List[str]] = Query(None),
         stages: Optional[List[str]] = Query(None),
-        assets_under_management: Optional[str] = Query(None),
-        minimum_investment: Optional[str] = Query(None),
-        maximum_investment: Optional[str] = Query(None),
-        number_of_investors: Optional[str] = Query(None),
-        gender_ratio: Optional[str] = Query(None),
+        assets_under_management: Optional[List[str]] = Query(None),
+        minimum_investment: Optional[List[str]] = Query(None),
+        maximum_investment: Optional[List[str]] = Query(None),
+        number_of_investors: Optional[List[str]] = Query(None),
+        gender_ratio: Optional[List[str]] = Query(None),
         db: Session = Depends(get_db)
 ):
     """Search investment funds using query parameters"""
@@ -148,7 +137,7 @@ async def search_funds_get(
                 models.InvestmentFund.firm_email.ilike(search)
             )
 
-        query = apply_fund_contact_filters(query, email, phone, address)
+        query = apply_contact_filters(query, email, phone, address)
 
         if cities:
             query = query.filter(models.InvestmentFund.firm_city.in_(cities))
@@ -167,17 +156,62 @@ async def search_funds_get(
         if stages:
             query = query.filter(models.InvestmentFund.stage_preferences.overlap(stages))
         if assets_under_management:
-            lower, upper = string_to_float(assets_under_management)
-            query = query.filter(models.InvestmentFund.capital_managed.between(lower, upper))
+            conditions = []
+            for range_value in assets_under_management:
+                lower, upper = string_to_float(range_value)
+                conditions.append(
+                    and_(
+                        models.InvestmentFund.capital_managed >= lower,
+                        models.InvestmentFund.capital_managed <= upper
+                    )
+                )
+            if conditions:
+                query = query.filter(or_(*conditions))
+
         if minimum_investment:
-            lower, upper = string_to_float(minimum_investment)
-            query = query.filter(models.InvestmentFund.min_investment.between(lower, upper))
+            conditions = []
+            for range_value in minimum_investment:
+                lower, upper = string_to_float(range_value)
+                conditions.append(
+                    and_(
+                        models.InvestmentFund.min_investment >= lower,
+                        models.InvestmentFund.min_investment <= upper
+                    )
+                )
+            if conditions:
+                query = query.filter(or_(*conditions))
         if maximum_investment:
-            lower, upper = string_to_float(maximum_investment)
-            query = query.filter(models.InvestmentFund.max_investment.between(lower, upper))
+            conditions = []
+            for range_value in maximum_investment:
+                lower, upper = string_to_float(range_value)
+                conditions.append(
+                    and_(
+                        models.InvestmentFund.max_investment >= lower,
+                        models.InvestmentFund.max_investment <= upper
+                    )
+                )
+            if conditions:
+                query = query.filter(or_(*conditions))
         if number_of_investors:
-            lower, upper = string_to_float(number_of_investors)
-            query = query.filter(models.InvestmentFund.number_of_investors.between(lower, upper))
+            conditions = []
+            for range_value in number_of_investors:
+                try:
+                    lower, upper = string_to_float(range_value)
+                    conditions.append(
+                        and_(
+                            models.InvestmentFund.number_of_investors >= lower,
+                            models.InvestmentFund.number_of_investors <= upper
+                        )
+                    )
+                except Exception as e:
+                    logger.error(f"Error parsing number_of_investors range: {e}")
+                    continue
+            if conditions:
+                query = query.filter(or_(*conditions))
+        if gender_ratio:
+            gender_ratios = gender_ratio if isinstance(gender_ratio, list) else [gender_ratio]
+            query = query.filter(models.InvestmentFund.gender_ratio.in_(gender_ratios))
+
         total = query.count()
         skip = (page - 1) * per_page
         results = query.offset(skip).limit(per_page).all()

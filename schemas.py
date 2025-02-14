@@ -455,19 +455,19 @@ class FundTypeFilter(BaseModel):
 
 class InvestmentRangesFilter(BaseModel):
     """Investment range filter parameters"""
-    assetsUnderManagement: Optional[str] = None
-    minInvestment: Optional[str] = None
-    maxInvestment: Optional[str] = None
+    assetsUnderManagement: Optional[List[str]] = None
+    minInvestment: Optional[List[str]] = None
+    maxInvestment: Optional[List[str]] = None
 
 
 class InvestorCountFilter(BaseModel):
     """Number of investors filter parameters"""
-    range: Optional[str] = None
+    range: Optional[List[str]] = None
 
 
 class GenderRatioFilter(BaseModel):
     """Gender ratio filter parameters"""
-    ratio: Optional[str] = None
+    ratio: Optional[List[str]] = None
 
 
 class GenderFilter(BaseModel):
