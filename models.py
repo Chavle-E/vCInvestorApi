@@ -1,4 +1,4 @@
-from sqlalchemy import Float, Text, Column, Integer, String, ForeignKey, Table, DateTime
+from sqlalchemy import Float, Text, Column, Integer, String, ForeignKey, Table, DateTime, Boolean
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 from sqlalchemy.orm import relationship
 from database import Base
@@ -91,3 +91,21 @@ class InvestmentFund(Base):
     firm_type = Column(String, nullable=True)
     number_of_investors = Column(Float, nullable=True)
     gender_ratio = Column(String, nullable=True)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True)
+    first_name = Column(String)
+    last_name = Column(String)
+    hashed_password = Column(String)
+    is_active = Column(Boolean, default=True)
+    is_verified = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.now(UTC))
+    last_login = Column(DateTime, nullable=True)
+    verification_token = Column(String, nullable=True)
+    reset_token = Column(String, nullable=True)
+    reset_token_expires = Column(DateTime, nullable=True)
+    profile_photo = Column(String, nullable=True)

@@ -100,6 +100,15 @@ class InvestmentFundLocationPreference(str, Enum):
     AUSTRALIA = "Australia"
 
 
+class InvestmentFundFinancingType(str, Enum):
+    DEBT = "Debt"
+    EQUITY = "Equity"
+    FUND_OF_FUNDS = 'Fund of Funds'
+    LEASES = 'Leases'
+    MEZZANINE = 'Mezzanine'
+    ROYALTIES = 'Royalties'
+
+
 class InvestmentFundIndustryPreference(str, Enum):
     IT_SERVICES = "IT Services"
     COMMUNICATIONS_NETWORKING = "Communications & Networking"
@@ -335,6 +344,15 @@ class InvestorFundType(str, Enum):
     INVESTMENT_BANK = "Investment Bank"
     GOVERNMENT = "Government Organization"
     STARTUP_STUDIO = "Startup Studio"
+
+
+class InvestorFinancingType(str, Enum):
+    DEBT = "Debt"
+    EQUITY = "Equity"
+    FUND_OF_FUNDS = 'Fund of Funds'
+    LEASES = 'Leases'
+    MEZZANINE = 'Mezzanine'
+    ROYALTIES = 'Royalties'
 
 
 class InvestorStagePreference(str, Enum):
