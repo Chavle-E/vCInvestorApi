@@ -7,17 +7,20 @@ from api.v1.endpoints import (
     export,
     utils,
     lists,
-    counts,
     investor_filters,
-    fund_filters
+    fund_filters,
+    auth,
+    google_auth
 )
 from database import engine, get_db, test_db_connection
 import models
 import os
 import logging
 import sys
-from datetime import datetime
 from middleware.rate_limit import RateLimitMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+from middleware.auth_rate_limit import AuthRateLimitMiddleware
+from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 
 # Configure logging
@@ -71,6 +74,17 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+if os.getenv("ENVIRONMENT") == "production":
+    app.add_middleware(HTTPSRedirectMiddleware)
+
+app.add_middleware(AuthRateLimitMiddleware)
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SECRET_KEY", "4GGdb2Ol15zbAeGzQQdwxH9WdW8HPCjV"),
+    max_age=3600,
+    same_site="lax"
+)
 
 app.add_middleware(
     RateLimitMiddleware,
@@ -114,7 +128,9 @@ protected_routes = [
     (export.router, "/api/v1/export", "export", "professional"),
     (lists.router, "/api/v1/lists", "lists", "basic"),
     (investor_filters.router, "/api/v1/filters", "Investor Filters", "basic"),
-    (fund_filters.router, "/api/v1/filters", "Fund Filters", "basic")
+    (fund_filters.router, "/api/v1/filters", "Fund Filters", "basic"),
+    (auth.router, "/api/v1/auth", "authentication", "basic"),
+    (google_auth.router, "/api/v1/auth/google", "google authentication", "basic")
 ]
 
 for router, prefix, tag, _ in protected_routes:

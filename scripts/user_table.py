@@ -17,3 +17,5 @@ def add_user_table():
 
 if __name__ == "__main__":
     add_user_table()
+
+

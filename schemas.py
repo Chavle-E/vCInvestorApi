@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, EmailStr
 from datetime import datetime
 
 
@@ -628,3 +628,71 @@ class SavedList(SavedListBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserBase(BaseModel):
+    email: EmailStr
+    first_name: str
+    last_name: str
+
+
+class UserCreate(UserBase):
+    password: str = Field(..., min_length=8)
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    profile_photo: Optional[str] = None
+
+
+class PasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=8)
+    confirm_password: str
+
+
+class PasswordReset(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=8)
+    confirm_password: str
+
+
+class VerifyEmail(BaseModel):
+    token: str
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class UserResponse(UserBase):
+    id: int
+    is_active: bool
+    is_verified: bool
+    created_at: datetime
+    profile_photo: Optional[str] = None
+    is_google_auth: Optional[bool] = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GoogleAccountLink(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class SetPasswordForOAuthUser(BaseModel):
+    password: str = Field(..., min_length=8)
+    confirm_password: str

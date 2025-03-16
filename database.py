@@ -39,17 +39,10 @@ SessionLocal = sessionmaker(
 Base = declarative_base()
 
 
-async def get_db():
+def get_db():
     db = SessionLocal()
     try:
         yield db
-    except Exception as e:
-        logger.error(f"Database error: {str(e)}")
-        db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="Database connection error"
-        )
     finally:
         db.close()
 
