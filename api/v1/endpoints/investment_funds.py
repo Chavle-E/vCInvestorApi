@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 def create_fund(fund: schemas.InvestmentFundCreate, db: Session = Depends(get_db)):
     try:
         return crud.investment_fund.create(db=db, obj_in=fund)
-    except Exception as e:
+    except Exception as  e:
         raise HTTPException(status_code=400, detail=str(e))
 
 

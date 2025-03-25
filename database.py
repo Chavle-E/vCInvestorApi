@@ -18,7 +18,7 @@ SQLALCHEMY_DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql://investor_admin:your_secure_password@localhost/investor_db"
 )
-print(SQLALCHEMY_DATABASE_URL)
+
 # Create engine with proper configuration
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,

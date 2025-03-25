@@ -148,3 +148,29 @@ def verify_refresh_token(token: str, db: Session) -> Optional[models.User]:
         return None
 
     return db_token.user
+
+
+def revoke_refresh_token(token: str, db: Session) -> bool:
+    """Revoke a refresh token (for logout)"""
+    db_token = db.query(models.RefreshToken).filter(
+        models.RefreshToken.token == token,
+        models.RefreshToken.revoked == False
+    ).first()
+
+    if not db_token:
+        return False
+
+    db_token.revoked = True
+    db.commit()
+    return True
+
+
+def cleanup_expired_tokens(db: Session) -> int:
+    """Remove expired tokens from the database
+    Returns the number of tokens deleted"""
+    now = datetime.now(UTC)
+    result = db.query(models.RefreshToken).filter(
+        models.RefreshToken.expires_at < now
+    ).delete()
+    db.commit()
+    return result

@@ -7,9 +7,8 @@ import schemas
 import logging
 from datetime import datetime, timedelta, UTC
 import auth
-from fastapi.security import OAuth2PasswordRequestForm
 import bcrypt
-from auth import verify_refresh_token, create_access_token
+from auth import verify_refresh_token, create_access_token, create_refresh_token, revoke_refresh_token
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -26,7 +25,7 @@ async def send_password_reset_email(email: str, token: str):
 @router.post('/register', response_model=schemas.UserResponse)
 async def register(
         user_in: schemas.UserCreate,
-        background_tasks=BackgroundTasks,
+        background_tasks: BackgroundTasks,
         db: Session = Depends(get_db)
 ):
     db_user = db.query(models.User).filter(models.User.email == user_in.email).first()
@@ -59,11 +58,10 @@ async def register(
 
 @router.post("/login", response_model=schemas.Token)
 async def login(
-        form_data: OAuth2PasswordRequestForm = Depends(),
+        credentials: schemas.UserLogin,
         db: Session = Depends(get_db)
 ):
-
-    user = db.query(models.User).filter(models.User.email == form_data.username).first()
+    user = db.query(models.User).filter(models.User.email == credentials.email).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -71,8 +69,9 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    pwd = form_data.password.encode('utf-8')
-    hashed = user.hashed_password.encode('utf-8')
+    # Convert password to bytes if it's a string
+    pwd = credentials.password.encode('utf-8') if isinstance(credentials.password, str) else credentials.password
+    hashed = user.hashed_password.encode('utf-8') if isinstance(user.hashed_password, str) else user.hashed_password
 
     if not bcrypt.checkpw(pwd, hashed):
         raise HTTPException(
@@ -81,13 +80,25 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Create access token
     access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(
         data={"sub": str(user.id)},
         expires_delta=access_token_expires
     )
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    # Create refresh token
+    refresh_token = auth.create_refresh_token(user_id=user.id, db=db)
+
+    # Update last login time
+    user.last_login = datetime.now(UTC)
+    db.commit()
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "refresh_token": refresh_token
+    }
 
 
 @router.post("/verify-email")
@@ -258,4 +269,25 @@ async def refresh_access_token(
         expires_delta=access_token_expires
     )
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    # Create new refresh token (token rotation for better security)
+    new_refresh_token = create_refresh_token(user_id=user.id, db=db)
+
+    # Revoke the old refresh token
+    revoke_refresh_token(refresh_token, db)
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "refresh_token": new_refresh_token
+    }
+
+
+@router.post("/logout")
+async def logout(
+        refresh_token: str = Body(..., embed=True),
+        db: Session = Depends(get_db)
+):
+    """Revoke refresh token on logout"""
+    success = auth.revoke_refresh_token(refresh_token, db)
+
+    return {"message": "Successfully logged out"}
