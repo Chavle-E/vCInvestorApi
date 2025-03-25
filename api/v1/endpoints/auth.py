@@ -9,17 +9,43 @@ from datetime import datetime, timedelta, UTC
 import auth
 import bcrypt
 from auth import verify_refresh_token, create_access_token, create_refresh_token, revoke_refresh_token
+from services.loops_client import LoopsClient
+import os
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+loops = LoopsClient()
 
 
-async def send_verification_email(email: str, token: str):
-    logger.info(f"Sending verification email to {email} with token {token}")
+# In api/v1/endpoints/auth.py
+async def send_verification_email(email: str, token: str, first_name: str = None):
+    """Send verification email via Loops.so"""
+    try:
+        # Send the verification email
+        result = loops.send_verification_email(email, token, first_name)
+
+        if result:
+            logger.info(f"Verification email sent successfully to {email}")
+        else:
+            logger.error(f"Failed to send verification email to {email} - no result from API")
+    except Exception as e:
+        logger.error(f"Exception sending verification email to {email}: {str(e)}", exc_info=True)
 
 
-async def send_password_reset_email(email: str, token: str):
-    logger.info(f"Sending password reset email to {email} with token {token}")
+# api/v1/endpoints/auth.py
+
+
+async def send_password_reset_email(email: str, token: str, first_name: str = None):
+    """Send password reset email via Loops.so"""
+    try:
+        logger.info(f"Attempting to send password reset email to {email}")
+        result = loops.send_password_reset_email(email, token, first_name)
+        if result:
+            logger.info(f"Password reset email sent successfully to {email}")
+        else:
+            logger.error(f"Failed to send password reset email to {email}")
+    except Exception as e:
+        logger.error(f"Error sending password reset email to {email}: {str(e)}", exc_info=True)
 
 
 @router.post('/register', response_model=schemas.UserResponse)
@@ -51,7 +77,12 @@ async def register(
     db.commit()
     db.refresh(db_user)
 
-    background_tasks.add_task(send_verification_email, user_in.email, verification_token)
+    background_tasks.add_task(
+        send_verification_email,
+        user_in.email,
+        verification_token,
+        user_in.first_name
+    )
 
     return db_user
 
@@ -135,7 +166,12 @@ async def forgot_password(
         user.reset_token_expires = reset_token_expires
         db.commit()
 
-        background_tasks.add_task(send_password_reset_email, user.email, reset_token)
+        background_tasks.add_task(
+            send_password_reset_email,
+            user.email,
+            reset_token,
+            user.first_name
+        )
     else:
         await asyncio.sleep(0.5)
 
