@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from api.v1.endpoints import (
@@ -12,7 +12,7 @@ from api.v1.endpoints import (
     auth,
     google_auth
 )
-from database import engine, get_db, test_db_connection
+from database import engine, test_db_connection
 import models
 import os
 import logging

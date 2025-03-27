@@ -10,14 +10,12 @@ import auth
 import bcrypt
 from auth import verify_refresh_token, create_access_token, create_refresh_token, revoke_refresh_token
 from services.loops_client import LoopsClient
-import os
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 loops = LoopsClient()
 
 
-# In api/v1/endpoints/auth.py
 async def send_verification_email(email: str, token: str, first_name: str = None):
     """Send verification email via Loops.so"""
     try:
@@ -30,9 +28,6 @@ async def send_verification_email(email: str, token: str, first_name: str = None
             logger.error(f"Failed to send verification email to {email} - no result from API")
     except Exception as e:
         logger.error(f"Exception sending verification email to {email}: {str(e)}", exc_info=True)
-
-
-# api/v1/endpoints/auth.py
 
 
 async def send_password_reset_email(email: str, token: str, first_name: str = None):
@@ -83,6 +78,20 @@ async def register(
         verification_token,
         user_in.first_name
     )
+
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": str(db_user.id)},
+        expires_delta=access_token_expires
+    )
+
+    refresh_token = auth.create_refresh_token(user_id=db_user.id, db=db)
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "refresh_token": refresh_token
+    }
 
     return db_user
 
