@@ -106,6 +106,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.now(UTC))
     last_login = Column(DateTime, nullable=True)
     verification_token = Column(String, nullable=True)
+    verification_id = Column(String, nullable=True)
     reset_token = Column(String, nullable=True)
     reset_token_expires = Column(DateTime, nullable=True)
     profile_photo = Column(String, nullable=True)

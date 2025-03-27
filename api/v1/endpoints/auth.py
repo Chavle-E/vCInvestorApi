@@ -10,10 +10,19 @@ import auth
 import bcrypt
 from auth import verify_refresh_token, create_access_token, create_refresh_token, revoke_refresh_token
 from services.loops_client import LoopsClient
+import uuid
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 loops = LoopsClient()
+
+
+def generate_verification_code(length=6):
+    """Generate a numeric verification code of specified length"""
+    import random
+    # Generate random digits
+    digits = ''.join(str(random.randint(0, 9)) for _ in range(length))
+    return digits
 
 
 async def send_verification_email(email: str, token: str, first_name: str = None):
@@ -56,7 +65,8 @@ async def register(
             detail="Email already registered"
         )
 
-    verification_token = auth.generate_token()
+    verification_id = str(uuid.uuid4())  # Generate a unique ID
+    verification_code = generate_verification_code(6)
     hashed_password = auth.get_password_hash(user_in.password)
 
     db_user = models.User(
@@ -64,7 +74,8 @@ async def register(
         first_name=user_in.first_name,
         last_name=user_in.last_name,
         hashed_password=hashed_password,
-        verification_token=verification_token,
+        verification_token=verification_code,
+        verification_id=verification_id,
         is_verified=False
     )
 
@@ -75,7 +86,7 @@ async def register(
     background_tasks.add_task(
         send_verification_email,
         user_in.email,
-        verification_token,
+        verification_code,
         user_in.first_name
     )
 
@@ -90,10 +101,9 @@ async def register(
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "refresh_token": refresh_token
+        "refresh_token": refresh_token,
+        "verification_id": verification_id
     }
-
-    return db_user
 
 
 @router.post("/login", response_model=schemas.Token)
@@ -146,17 +156,30 @@ async def verify_email(
         verification: schemas.VerifyEmail,
         db: Session = Depends(get_db)
 ):
-    user = db.query(models.User).filter(models.User.verification_token == verification.token).first()
+    user = db.query(models.User).filter(
+        models.User.verification_id == verification.verification_id,
+        models.User.verification_token == verification.code
+    ).first()
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid verification token"
+            detail="Invalid verification code"
         )
+
     user.is_verified = True
     user.verification_token = None
+    user.verification_id = None
     db.commit()
 
-    return {"message": "Email verified successfully"}
+    return {
+        "message": "Email verified successfully",
+        "user_id": user.id,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "is_verified": True
+    }
 
 
 @router.post("/forgot-password")

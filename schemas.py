@@ -669,7 +669,8 @@ class PasswordResetConfirm(BaseModel):
 
 
 class VerifyEmail(BaseModel):
-    token: str
+    code: str = Field(..., min_length=6, max_length=6)
+    verification_id: str
 
 
 class Token(BaseModel):
