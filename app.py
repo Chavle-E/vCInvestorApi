@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+
+from fastapi.params import Depends
+
 from api.v1.endpoints import (
     investors,
     investment_funds,
@@ -21,6 +24,7 @@ from middleware.rate_limit import RateLimitMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from middleware.auth_rate_limit import AuthRateLimitMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+from auth import get_current_user
 
 
 # Configure logging
@@ -137,7 +141,8 @@ for router, prefix, tag, _ in protected_routes:
     app.include_router(
         router,
         prefix=prefix,
-        tags=[tag]
+        tags=[tag],
+        dependencies=[Depends(get_current_user)]
     )
 
 if __name__ == "__main__":

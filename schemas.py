@@ -673,6 +673,11 @@ class VerifyEmail(BaseModel):
     verification_id: str
 
 
+class VerifyOTP(BaseModel):
+    user_id: int
+    code: str = Field(..., min_length=6, max_length=6)
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str

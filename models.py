@@ -111,6 +111,8 @@ class User(Base):
     reset_token_expires = Column(DateTime, nullable=True)
     profile_photo = Column(String, nullable=True)
     is_google_auth = Column(Boolean, default=False)
+    otp_code = Column(String, nullable=True)
+    otp_created_at = Column(DateTime, nullable=True)
 
     refresh_tokens = relationship("RefreshToken", back_populates="user")
 

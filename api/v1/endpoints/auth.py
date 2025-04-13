@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Body
+from fastapi.responses import JSONResponse
 import asyncio
 from sqlalchemy.orm import Session
 from database import get_db
@@ -23,6 +24,20 @@ def generate_verification_code(length=6):
     # Generate random digits
     digits = ''.join(str(random.randint(0, 9)) for _ in range(length))
     return digits
+
+
+async def send_otp_email(email: str, otp: str, first_name: str = None):
+    """Send OTP email via Loops.so"""
+    try:
+        # Send the OTP email
+        result = loops.send_verification_email(email, otp, first_name)
+
+        if result:
+            logger.info(f"OTP email sent successfully to {email}")
+        else:
+            logger.error(f"Failed to send OTP email to {email} - no result from API")
+    except Exception as e:
+        logger.error(f"Exception sending OTP email to {email}: {str(e)}", exc_info=True)
 
 
 async def send_verification_email(email: str, token: str, first_name: str = None):
@@ -52,7 +67,7 @@ async def send_password_reset_email(email: str, token: str, first_name: str = No
         logger.error(f"Error sending password reset email to {email}: {str(e)}", exc_info=True)
 
 
-@router.post('/register', response_model=schemas.UserResponse)
+@router.post('/register', response_model=None)
 async def register(
         user_in: schemas.UserCreate,
         background_tasks: BackgroundTasks,
@@ -98,15 +113,13 @@ async def register(
 
     refresh_token = auth.create_refresh_token(user_id=db_user.id, db=db)
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "refresh_token": refresh_token,
-        "verification_id": verification_id
-    }
+    return JSONResponse(
+        status_code=status.HTTP_302_FOUND,
+        content={"verification_id": verification_id, "flow": "email_verification"}
+    )
 
 
-@router.post("/login", response_model=schemas.Token)
+@router.post("/login", response_model=None)  # Remove the response_model
 async def login(
         credentials: schemas.UserLogin,
         db: Session = Depends(get_db)
@@ -130,25 +143,60 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Create access token
-    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = auth.create_access_token(
-        data={"sub": str(user.id)},
-        expires_delta=access_token_expires
-    )
+    # Check if the account is active
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account has been deactivated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-    # Create refresh token
-    refresh_token = auth.create_refresh_token(user_id=user.id, db=db)
+    # Check if email is verified
+    if not user.is_verified:
+        # Generate new verification code
+        verification_id = str(uuid.uuid4())
+        verification_code = generate_verification_code(6)
+        user.verification_token = verification_code
+        user.verification_id = verification_id
+        db.commit()
 
-    # Update last login time
-    user.last_login = datetime.now(UTC)
+        # Send verification email
+        background_tasks = BackgroundTasks()
+        background_tasks.add_task(
+            send_verification_email,
+            user.email,
+            verification_code,
+            user.first_name
+        )
+
+        # Return 302 status code for email verification
+        return JSONResponse(
+            status_code=status.HTTP_302_FOUND,
+            content={"verification_id": verification_id, "flow": "email_verification"}
+        )
+
+    # Generate OTP for 2FA
+    otp_code = generate_verification_code(6)
+
+    # Store OTP in a temporary field (add this field to User model)
+    user.otp_code = otp_code
+    user.otp_created_at = datetime.now(UTC)
     db.commit()
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "refresh_token": refresh_token
-    }
+    # Send OTP via email
+    background_tasks = BackgroundTasks()
+    background_tasks.add_task(
+        send_otp_email,  # You'll need to create this function
+        user.email,
+        otp_code,
+        user.first_name
+    )
+
+    # Return 302 status code for 2FA verification
+    return JSONResponse(
+        status_code=status.HTTP_302_FOUND,
+        content={"user_id": str(user.id), "flow": "2fa_verification"}
+    )
 
 
 @router.post("/verify-email")
@@ -170,7 +218,18 @@ async def verify_email(
     user.is_verified = True
     user.verification_token = None
     user.verification_id = None
+    user.last_login = datetime.now(UTC)
     db.commit()
+
+    # Create access token
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": str(user.id)},
+        expires_delta=access_token_expires
+    )
+
+    # Create refresh token
+    refresh_token = auth.create_refresh_token(user_id=user.id, db=db)
 
     return {
         "message": "Email verified successfully",
@@ -178,7 +237,66 @@ async def verify_email(
         "email": user.email,
         "first_name": user.first_name,
         "last_name": user.last_name,
-        "is_verified": True
+        "is_verified": True,
+        "access_token": access_token,
+        "token_type": "bearer",
+        "refresh_token": refresh_token
+    }
+
+
+@router.post("/verify-otp")
+async def verify_otp(
+        otp_data: schemas.VerifyOTP,
+        db: Session = Depends(get_db)
+):
+    user = db.query(models.User).filter(models.User.id == otp_data.user_id).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid user ID"
+        )
+
+    # Check if OTP is valid
+    if user.otp_code != otp_data.code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid OTP code"
+        )
+
+    # Check if OTP has expired (10 minutes)
+    otp_expiry = user.otp_created_at + timedelta(minutes=10)
+    if datetime.now(UTC) > otp_expiry:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="OTP has expired"
+        )
+
+    # Clear OTP data
+    user.otp_code = None
+    user.otp_created_at = None
+    user.last_login = datetime.now(UTC)
+    db.commit()
+
+    # Create access token
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": str(user.id)},
+        expires_delta=access_token_expires
+    )
+
+    # Create refresh token
+    refresh_token = auth.create_refresh_token(user_id=user.id, db=db)
+
+    return {
+        "message": "OTP verified successfully",
+        "user_id": user.id,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "access_token": access_token,
+        "token_type": "bearer",
+        "refresh_token": refresh_token
     }
 
 
