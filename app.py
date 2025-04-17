@@ -120,7 +120,8 @@ async def health_check():
 
 # Public routes - no auth required
 public_routes = [
-    (utils.router, "/api/v1", "utils")
+    (utils.router, "/api/v1", "utils"),
+    (auth.router, "/api/v1/auth", "authentication")
 ]
 
 for router, prefix, tag in public_routes:
@@ -133,7 +134,6 @@ protected_routes = [
     (lists.router, "/api/v1/lists", "lists", "basic"),
     (investor_filters.router, "/api/v1/filters", "Investor Filters", "basic"),
     (fund_filters.router, "/api/v1/filters", "Fund Filters", "basic"),
-    (auth.router, "/api/v1/auth", "authentication", "basic"),
     (google_auth.router, "/api/v1/auth/google", "google authentication", "basic")
 ]
 
