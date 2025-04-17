@@ -50,7 +50,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             )
 
     def _get_client_identifier(self, request: Request) -> str:
-        # You might want to use API key or token instead of IP
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            # Get the original client IP (first in the list)
+            client_ip = forwarded_for.split(",")[0].strip()
+            return client_ip
+
+        # Fall back to direct client IP
         return request.client.host if request.client else "unknown"
 
     async def _get_user_tier(self, request: Request) -> str:
