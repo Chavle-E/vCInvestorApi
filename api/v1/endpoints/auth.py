@@ -30,8 +30,8 @@ def generate_verification_code(length=6):
 async def send_otp_email(email: str, otp: str, first_name: str = None):
     """Send OTP email via Loops.so"""
     try:
-        # Send the OTP email
-        result = loops.send_verification_email(email, otp, first_name)
+        # Send the OTP email using our updated LoopsClient
+        result = loops.send_otp_email(email, otp, first_name)
 
         if result:
             logger.info(f"OTP email sent successfully to {email}")
@@ -44,7 +44,7 @@ async def send_otp_email(email: str, otp: str, first_name: str = None):
 async def send_verification_email(email: str, token: str, first_name: str = None):
     """Send verification email via Loops.so"""
     try:
-        # Send the verification email
+        # Send the verification email using our updated LoopsClient
         result = loops.send_verification_email(email, token, first_name)
 
         if result:
@@ -59,7 +59,9 @@ async def send_password_reset_email(email: str, token: str, first_name: str = No
     """Send password reset email via Loops.so"""
     try:
         logger.info(f"Attempting to send password reset email to {email}")
+        # Send the password reset email using our updated LoopsClient
         result = loops.send_password_reset_email(email, token, first_name)
+
         if result:
             logger.info(f"Password reset email sent successfully to {email}")
         else:

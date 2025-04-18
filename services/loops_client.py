@@ -64,9 +64,11 @@ class LoopsClient:
         # Create a secure link that contains the token but doesn't expose it directly
         verification_link = f"{self.frontend_url}/verify-email?token={token}"
 
-        # Data variables for the email template - only include the link, not the raw token
+        # Data variables for the email template - include both the token and link
         data = {
-            "verificationLink": verification_link
+            "verificationToken": token,
+            "verificationLink": verification_link,
+            "email": email
         }
 
         # Add first name if provided
@@ -74,6 +76,30 @@ class LoopsClient:
             data["firstName"] = first_name
 
         logger.info(f"Sending verification email to {email} with embedded token")
+        return self.send_transactional_email(email, template_id, data)
+
+    def send_otp_email(self, email: str, otp: str, first_name: str = None) -> Dict:
+        """
+        Send a one-time password (OTP) email for two-factor authentication
+
+        :param email: User's email address
+        :param otp: One-time password code
+        :param first_name: User's first name (optional)
+        :return: API response
+        """
+        template_id = os.getenv("LOOPS_OTP_TEMPLATE_ID")
+
+        # Data variables for the email template
+        data = {
+            "otp": otp,
+            "email": email
+        }
+
+        # Add first name if provided
+        if first_name:
+            data["firstName"] = first_name
+
+        logger.info(f"Sending OTP email to {email}")
         return self.send_transactional_email(email, template_id, data)
 
     def send_password_reset_email(self, email: str, token: str, first_name: str = None) -> Dict:
@@ -90,9 +116,10 @@ class LoopsClient:
         # Create a secure link that contains the token but doesn't expose it directly
         reset_link = f"{self.frontend_url}/reset-password?token={token}"
 
-        # Data variables for the email template - only include the link, not the raw token
+        # Data variables for the email template
         data = {
-            "resetLink": reset_link
+            "resetLink": reset_link,
+            "email": email
         }
 
         # Add first name if provided
