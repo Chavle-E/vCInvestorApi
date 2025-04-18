@@ -8,11 +8,14 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - ENVIRONMENT=${ENVIRONMENT}
+      - RESET_DB=${RESET_DB:-false}  # Set to 'true' if you want to reset the DB
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - ./data:/app/data
+    # Use the entrypoint script
+    entrypoint: ["/app/docker-entrypoint.sh"]
     restart: unless-stopped
     networks:
       - investor-network
