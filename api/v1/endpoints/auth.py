@@ -166,7 +166,7 @@ async def login(
         # Send verification email
         background_tasks = BackgroundTasks()
         background_tasks.add_task(
-            send_verification_email,
+            send_otp_email,
             user.email,
             verification_code,
             user.first_name
