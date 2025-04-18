@@ -20,7 +20,7 @@ import models
 import os
 import logging
 import sys
-from middleware.rate_limit import RateLimitMiddleware
+from middleware.user_token_rate_limit import UserTokenRateLimitMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from middleware.auth_rate_limit import AuthRateLimitMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -91,9 +91,11 @@ app.add_middleware(
 )
 
 app.add_middleware(
-    RateLimitMiddleware,
+    UserTokenRateLimitMiddleware,
     rate_limit_duration=24 * 60 * 60,  # 24 hours in seconds
-    default_limit=1000  # Default requests per day
+    default_limit=1000,
+    jwt_secret_key=os.getenv("JWT_SECRET_KEY"),
+    exclude_paths=["/api/v1/auth/login", "/api/v1/auth/refresh", "/health", "/api/v1/auth/register"]
 )
 
 # Configure CORS

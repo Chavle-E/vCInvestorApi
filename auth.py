@@ -84,6 +84,9 @@ def create_access_token(data: Dict, expires_delta: Optional[timedelta] = None):
     else:
         expire = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
+    if "tier" not in to_encode:
+        to_encode["tier"] = "basic"
+
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt

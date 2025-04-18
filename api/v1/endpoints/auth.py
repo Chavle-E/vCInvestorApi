@@ -11,6 +11,7 @@ import auth
 import bcrypt
 from auth import verify_refresh_token, create_access_token, create_refresh_token, revoke_refresh_token
 from services.loops_client import LoopsClient
+from services.user_tier_service import get_user_tier
 import uuid
 
 router = APIRouter()
@@ -221,10 +222,12 @@ async def verify_email(
     user.last_login = datetime.now(UTC)
     db.commit()
 
+    user_tier = get_user_tier(user)
+
     # Create access token
     access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(
-        data={"sub": str(user.id)},
+        data={"sub": str(user.id), "tier": user_tier},
         expires_delta=access_token_expires
     )
 
@@ -278,10 +281,12 @@ async def verify_otp(
     user.last_login = datetime.now(UTC)
     db.commit()
 
+    user_tier = get_user_tier(user)
+
     # Create access token
     access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(
-        data={"sub": str(user.id)},
+        data={"sub": str(user.id), "tier": user_tier},
         expires_delta=access_token_expires
     )
 
