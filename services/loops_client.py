@@ -64,18 +64,15 @@ class LoopsClient:
         # Create a secure link that contains the token but doesn't expose it directly
         verification_link = f"{self.frontend_url}/verify-email?token={token}"
 
-        # Data variables for the email template - include both the token and link
         data = {
             "verificationToken": token,
             "verificationLink": verification_link,
-            "email": email
+            "email": email,
+            "firstName": first_name if first_name else "there"
         }
 
-        # Add first name if provided
-        if first_name:
-            data["firstName"] = first_name
-
         logger.info(f"Sending verification email to {email} with embedded token")
+        logger.info(f"Data being sent to Loops: {data}")
         return self.send_transactional_email(email, template_id, data)
 
     def send_otp_email(self, email: str, otp: str, first_name: str = None) -> Dict:
