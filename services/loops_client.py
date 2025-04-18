@@ -88,13 +88,10 @@ class LoopsClient:
 
         # Data variables for the email template
         data = {
+            "first_name": first_name,
             "otp": otp,
             "email": email
         }
-
-        # Add first name if provided
-        if first_name:
-            data["firstName"] = first_name
 
         logger.info(f"Sending OTP email to {email}")
         return self.send_transactional_email(email, template_id, data)
