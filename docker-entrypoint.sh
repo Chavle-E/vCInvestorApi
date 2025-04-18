@@ -5,6 +5,8 @@ set -e
 echo "Waiting for database to be ready..."
 python -c "
 import time
+import sys
+sys.path.append('/app')  # Add the app directory to Python path
 from database import test_db_connection
 while not test_db_connection():
     print('Database not ready yet, waiting...')
@@ -12,18 +14,12 @@ while not test_db_connection():
 "
 echo "Database is ready!"
 
-# Option to reset the database if the RESET_DB environment variable is set to 'true'
-if [ "$RESET_DB" = "true" ]; then
-    echo "Resetting database..."
-    python scripts/reset_database.py
-    echo "Database reset completed."
-fi
-
 # Update the database schema
 echo "Running database schema update..."
-python scripts/update_schema.py
+cd /app  # Ensure we're in the right directory
+python -m scripts.update_schema  # Run script as a module
 echo "Schema update completed."
 
 # Start the application
 echo "Starting the application..."
-exec uvicorn app:app --host 0.0.0.0 --port 8000 $@
+exec uvicorn app:app --host 0.0.0.0 --port 8000

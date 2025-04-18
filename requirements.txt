@@ -17,7 +17,7 @@ pandas~=2.2.3
 auth~=0.5.3
 bcrypt~=4.3.0
 jose~=1.0.0
-starlette~=0.40.0
+starlette
 
 
 google-auth==2.22.0
